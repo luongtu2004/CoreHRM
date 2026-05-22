@@ -14,10 +14,10 @@ function AuthGate() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inTabsGroup = segments[0] === '(tabs)';
-    if (!token && inTabsGroup) {
+    const inAuthGroup = segments[0] === 'login';
+    if (!token && !inAuthGroup) {
       router.replace('/login');
-    } else if (token && !inTabsGroup) {
+    } else if (token && inAuthGroup) {
       router.replace('/(tabs)');
     }
   }, [token, isLoading, segments]);

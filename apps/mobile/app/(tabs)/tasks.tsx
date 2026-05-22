@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../src/lib/api';
 import { CheckSquare, Clock, Calendar, ChevronRight, CheckCircle, Circle, AlertTriangle } from 'lucide-react-native';
@@ -20,12 +20,22 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 export default function TasksScreen() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState('');
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [feedback, setFeedback] = useState('');
+
+  const { data: userData } = useQuery({
+    queryKey: ['my-profile'],
+    queryFn: async () => {
+      const res = await api.get('/auth/me');
+      return res.data?.data || res.data;
+    }
+  });
 
   const { data: tasksData, isLoading } = useQuery({
     queryKey: ['my-tasks'],
     queryFn: async () => {
-      const res = await api.get('/tasks');
-      return res.data?.data || res.data || [];
+      const res = await api.get('/tasks?limit=1000');
+      return res.data?.data?.data || res.data?.data || [];
     }
   });
 
@@ -37,7 +47,28 @@ export default function TasksScreen() {
     }
   });
 
-  const tasks = Array.isArray(tasksData) ? tasksData : [];
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/tasks/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+      Alert.alert('✅', 'Đã cập nhật công việc!');
+      setSelectedTask(null);
+      setFeedback('');
+    }
+  });
+
+  const handleUpdateTask = (status: string) => {
+    if (!selectedTask) return;
+    let newDesc = selectedTask.description || '';
+    if (feedback.trim()) {
+      const replierName = userData?.name || 'Nhân viên';
+      newDesc += `\n\n[${replierName}]: ${feedback.trim()}`;
+    }
+    updateTaskMutation.mutate({ id: selectedTask.id, data: { status, description: newDesc } });
+  };
+
+  const allTasks = Array.isArray(tasksData) ? tasksData : [];
+  const tasks = allTasks.filter((t: any) => t.assignedTo === userData?.id);
   const filtered = filter ? tasks.filter((t: any) => t.status === filter) : tasks;
 
   const stats = {
@@ -52,7 +83,11 @@ export default function TasksScreen() {
     const StIcon = st.icon;
     const isDone = item.status === 'DONE';
     return (
-      <View style={[styles.card, isDone && styles.cardDone]}>
+      <TouchableOpacity 
+        style={[styles.card, isDone && styles.cardDone]} 
+        activeOpacity={0.7}
+        onPress={() => setSelectedTask(item)}
+      >
         <View style={styles.cardHeader}>
           <View style={[styles.priorityTag, { backgroundColor: pri.bg }]}>
             <AlertTriangle size={12} color={pri.color} />
@@ -95,7 +130,7 @@ export default function TasksScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -143,6 +178,72 @@ export default function TasksScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+      )}
+
+      {/* Task Details Modal */}
+      <Modal visible={!!selectedTask} animationType="slide" transparent={true}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1e293b' }}>Chi tiết công việc</Text>
+              <TouchableOpacity onPress={() => { setSelectedTask(null); setFeedback(''); }} style={{ padding: 4 }}>
+                <Text style={{ fontSize: 24, color: '#94a3b8' }}>×</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1e293b', marginBottom: 8 }}>{selectedTask?.title}</Text>
+              
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                <View style={[styles.priorityTag, { backgroundColor: priorityConfig[selectedTask?.priority || 'MEDIUM']?.bg }]}>
+                  <Text style={[styles.priorityText, { color: priorityConfig[selectedTask?.priority || 'MEDIUM']?.color }]}>{priorityConfig[selectedTask?.priority || 'MEDIUM']?.label}</Text>
+                </View>
+                <View style={[styles.statusTag, { backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }]}>
+                  <Text style={[styles.statusText, { color: statusConfig[selectedTask?.status || 'TODO']?.color }]}>{statusConfig[selectedTask?.status || 'TODO']?.label}</Text>
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748b', marginBottom: 4 }}>Mô tả:</Text>
+              <Text style={{ fontSize: 14, color: '#334155', lineHeight: 22, marginBottom: 20 }}>{selectedTask?.description || 'Không có mô tả'}</Text>
+              
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748b', marginBottom: 8 }}>Thêm phản hồi / báo cáo:</Text>
+              <TextInput
+                style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, padding: 12, height: 100, textAlignVertical: 'top', fontSize: 14, marginBottom: 20 }}
+                placeholder="Nhập tiến độ hoặc phản hồi..."
+                value={feedback}
+                onChangeText={setFeedback}
+                multiline
+              />
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                {feedback.trim().length > 0 ? (
+                  <TouchableOpacity disabled={updateTaskMutation.isPending} style={{ flex: 1, backgroundColor: '#2563eb', padding: 14, borderRadius: 12, alignItems: 'center', opacity: updateTaskMutation.isPending ? 0.5 : 1 }} onPress={() => handleUpdateTask(selectedTask.status)}>
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Gửi phản hồi</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <>
+                    {selectedTask?.status !== 'IN_PROGRESS' && selectedTask?.status !== 'DONE' && (
+                      <TouchableOpacity disabled={updateTaskMutation.isPending} style={{ flex: 1, backgroundColor: '#eff6ff', padding: 14, borderRadius: 12, alignItems: 'center', opacity: updateTaskMutation.isPending ? 0.5 : 1 }} onPress={() => handleUpdateTask('IN_PROGRESS')}>
+                        <Text style={{ color: '#2563eb', fontWeight: 'bold' }}>Đang làm</Text>
+                      </TouchableOpacity>
+                    )}
+                    {selectedTask?.status !== 'DONE' && (
+                      <TouchableOpacity disabled={updateTaskMutation.isPending} style={{ flex: 1, backgroundColor: '#16a34a', padding: 14, borderRadius: 12, alignItems: 'center', opacity: updateTaskMutation.isPending ? 0.5 : 1 }} onPress={() => handleUpdateTask('DONE')}>
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Hoàn thành</Text>
+                      </TouchableOpacity>
+                    )}
+                    {selectedTask?.status === 'DONE' && (
+                      <View style={{ flex: 1, padding: 14, alignItems: 'center' }}>
+                        <Text style={{ color: '#94a3b8', fontSize: 13 }}>Gõ nội dung để gửi thêm phản hồi</Text>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }

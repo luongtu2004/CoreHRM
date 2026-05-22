@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   StyleSheet, View, Text, FlatList, ActivityIndicator,
-  TouchableOpacity, Modal, TextInput, ScrollView, Alert, Platform
+  TouchableOpacity, Modal, TextInput, ScrollView, Alert, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../src/lib/api';
@@ -55,9 +55,17 @@ export default function LeavesScreen() {
       queryClient.invalidateQueries({ queryKey: ['my-leaves'] });
       setShowModal(false);
       setFormData({ leaveTypeId: '', startDate: '', endDate: '', reason: '' });
-      Alert.alert('✅ Thành công', 'Đã gửi đơn xin nghỉ phép. Chờ HR phê duyệt nhé!');
+      if (Platform.OS === 'web') {
+        window.alert('✅ Thành công: Đã gửi đơn xin nghỉ phép. Chờ HR phê duyệt nhé!');
+      } else {
+        Alert.alert('✅ Thành công', 'Đã gửi đơn xin nghỉ phép. Chờ HR phê duyệt nhé!');
+      }
     },
-    onError: (e: any) => Alert.alert('❌ Lỗi', e.message || e.response?.data?.message || 'Có lỗi xảy ra')
+    onError: (e: any) => {
+      const msg = e.response?.data?.message || e.message || 'Có lỗi xảy ra';
+      if (Platform.OS === 'web') window.alert('❌ Lỗi: ' + msg);
+      else Alert.alert('❌ Lỗi', msg);
+    }
   });
 
   const cancelMutation = useMutation({
@@ -202,7 +210,10 @@ export default function LeavesScreen() {
 
       {/* Create Modal */}
       <Modal visible={showModal} animationType="slide" transparent>
-        <View style={styles.overlay}>
+        <KeyboardAvoidingView 
+          style={styles.overlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <View>
@@ -285,7 +296,7 @@ export default function LeavesScreen() {
               <View style={{ height: 20 }} />
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

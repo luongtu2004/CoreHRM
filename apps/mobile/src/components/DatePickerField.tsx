@@ -1,15 +1,8 @@
-import { Platform, View, Text, StyleSheet, TextInput } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Calendar } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useState } from 'react';
 
-/**
- * DatePickerField — hoạt động trên cả Web (input type=date) và Native (TextInput)
- * Props:
- *   label: string
- *   value: string (YYYY-MM-DD)
- *   onChange: (val: string) => void
- *   required?: boolean
- *   minDate?: string (YYYY-MM-DD)
- */
 export default function DatePickerField({
   label,
   value,
@@ -23,12 +16,26 @@ export default function DatePickerField({
   required?: boolean;
   minDate?: string;
 }) {
+  const [show, setShow] = useState(false);
+
   const fmtDisplay = (v: string) => {
-    if (!v) return '';
+    if (!v) return 'YYYY-MM-DD';
     try {
       return new Date(v).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     } catch {
       return v;
+    }
+  };
+
+  const currentDate = value ? new Date(value) : new Date();
+
+  const handleNativeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShow(false);
+    if (selectedDate) {
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      onChange(`${year}-${month}-${day}`);
     }
   };
 
@@ -40,7 +47,7 @@ export default function DatePickerField({
         </Text>
         <View style={styles.inputWrap}>
           <Calendar size={16} color="#94a3b8" />
-          {/* @ts-ignore — web only */}
+          {/* @ts-ignore */}
           <input
             type="date"
             value={value}
@@ -63,23 +70,43 @@ export default function DatePickerField({
     );
   }
 
-  // Native fallback — TextInput với gợi ý
+  // Native fallback — DateTimePicker
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>
         {label}{required && <Text style={styles.required}> *</Text>}
       </Text>
-      <View style={styles.inputWrap}>
+      
+      <TouchableOpacity 
+        style={styles.inputWrap} 
+        onPress={() => setShow(true)}
+        activeOpacity={0.7}
+      >
         <Calendar size={16} color="#94a3b8" />
-        <TextInput
-          style={styles.nativeInput}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor="#94a3b8"
-          value={value}
-          onChangeText={onChange}
-          keyboardType="numeric"
-        />
-      </View>
+        <Text style={[styles.nativeInput, !value && { color: '#94a3b8' }]}>
+          {fmtDisplay(value)}
+        </Text>
+      </TouchableOpacity>
+
+      {show && (
+        <View style={Platform.OS === 'ios' ? styles.iosPickerContainer : undefined}>
+          {Platform.OS === 'ios' && (
+            <View style={styles.iosHeader}>
+              <TouchableOpacity onPress={() => setShow(false)}>
+                <Text style={styles.iosDoneText}>Xong</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <DateTimePicker
+            value={currentDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            minimumDate={minDate ? new Date(minDate) : undefined}
+            onChange={handleNativeChange}
+            textColor="#1e293b"
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -95,4 +122,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   nativeInput: { flex: 1, fontSize: 15, color: '#1e293b', marginLeft: 8 },
+  iosPickerContainer: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden'
+  },
+  iosHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    backgroundColor: '#f1f5f9',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  iosDoneText: {
+    color: '#2563eb',
+    fontWeight: 'bold',
+    fontSize: 15,
+  }
 });

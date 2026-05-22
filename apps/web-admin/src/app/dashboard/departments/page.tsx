@@ -99,6 +99,11 @@ export default function DepartmentsPage() {
     item.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+  const totalPages = Math.ceil((filteredData?.length || 0) / PAGE_SIZE);
+  const paginatedData = filteredData?.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   const inputCls = 'w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-500/15';
   const selectCls = 'w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-800 outline-none transition-all focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-500/15 cursor-pointer';
 
@@ -204,7 +209,7 @@ export default function DepartmentsPage() {
           <TableBody>
             {isLoading ? (
               <TableRow><TableCell colSpan={5} className="py-12 text-center text-slate-400">Đang tải...</TableCell></TableRow>
-            ) : filteredData?.map((dept: any) => (
+            ) : paginatedData?.map((dept: any) => (
               <TableRow key={dept.id} className="group border-b border-slate-50 transition-all duration-300 hover:bg-slate-50/80">
                 <TableCell className="px-6 py-4">
                   <div className="flex items-center gap-3">
@@ -256,6 +261,43 @@ export default function DepartmentsPage() {
             )}
           </TableBody>
         </Table>
+
+        {totalPages > 0 && (
+          <div className="flex items-center justify-between border-t border-slate-100 bg-white/50 px-6 py-4">
+            <p className="text-sm text-slate-500">
+              Hiển thị <span className="font-semibold text-slate-800">{(currentPage - 1) * PAGE_SIZE + 1}</span>–<span className="font-semibold text-slate-800">{Math.min(currentPage * PAGE_SIZE, filteredData?.length || 0)}</span> trong <span className="font-semibold text-slate-800">{filteredData?.length}</span> phòng ban
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ‹
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-medium transition-all ${
+                    currentPage === page
+                      ? 'border-amber-500 bg-amber-500 text-white shadow-sm shadow-amber-500/30'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

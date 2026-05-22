@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, TextInput, Platform
+  ActivityIndicator, Alert, Modal, TextInput, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../src/lib/api';
@@ -178,7 +178,10 @@ export default function ProfileScreen() {
 
       {/* Change Password Modal */}
       <Modal visible={showPasswordModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          style={styles.modalOverlay} 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
             <TextInput
@@ -217,7 +220,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
   );

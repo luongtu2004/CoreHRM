@@ -21,13 +21,16 @@ export default function TasksPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [formData, setFormData] = useState({ title: '', description: '', priority: 'MEDIUM', status: 'TODO', assignedTo: '', dueDate: '' });
+  const [formData, setFormData] = useState({ title: '', description: '', priority: 'MEDIUM', status: 'TODO', assignedTo: '', dueDate: '', feedback: '' });
+
+  const { data: profileRes } = useQuery({ queryKey: ['myProfile'], queryFn: async () => (await api.get('/auth/me')).data });
+  const myProfile = profileRes?.data || profileRes;
 
   const { data: usersData } = useQuery({ queryKey: ['users'], queryFn: async () => (await api.get('/users')).data });
 
   const { data: tasksResponse, isLoading } = useQuery({
     queryKey: ['tasks'],
-    queryFn: async () => (await api.get('/tasks')).data
+    queryFn: async () => (await api.get('/tasks?limit=1000')).data
   });
   const dataList = Array.isArray(tasksResponse?.data) ? tasksResponse.data : (Array.isArray(tasksResponse) ? tasksResponse : []);
 
@@ -36,7 +39,7 @@ export default function TasksPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setIsAddOpen(false);
-      setFormData({ title: '', description: '', priority: 'MEDIUM', status: 'TODO', assignedTo: '', dueDate: '' });
+      setFormData({ title: '', description: '', priority: 'MEDIUM', status: 'TODO', assignedTo: '', dueDate: '', feedback: '' });
       toast.success('Thêm công việc thành công');
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Lỗi khi thêm')
@@ -62,12 +65,33 @@ export default function TasksPage() {
     onError: (error: any) => toast.error('Lỗi khi xóa')
   });
 
-  const handleAddSubmit = (e: React.FormEvent) => { e.preventDefault(); createMutation.mutate(formData); };
-  const handleEditSubmit = (e: React.FormEvent) => { e.preventDefault(); updateMutation.mutate(formData); };
+  const handleAddSubmit = (e: React.FormEvent) => { 
+    e.preventDefault(); 
+    const payload = { ...formData } as any;
+    if (!payload.assignedTo) payload.assignedTo = null;
+    if (!payload.dueDate) payload.dueDate = null;
+    else payload.dueDate = new Date(payload.dueDate).toISOString();
+    createMutation.mutate(payload); 
+  };
+  const handleEditSubmit = (e: React.FormEvent) => { 
+    e.preventDefault(); 
+    const payload = { ...formData } as any;
+    if (!payload.assignedTo) payload.assignedTo = null;
+    if (!payload.dueDate) payload.dueDate = null;
+    else payload.dueDate = new Date(payload.dueDate).toISOString();
+    
+    if (payload.feedback?.trim()) {
+      const adminName = myProfile?.name || 'Quản trị viên';
+      payload.description = `${payload.description || ''}\n\n[${adminName}]: ${payload.feedback.trim()}`.trim();
+    }
+    delete payload.feedback;
+
+    updateMutation.mutate(payload); 
+  };
 
   const openEdit = (item: any) => {
     setSelectedItem(item);
-    setFormData({ title: item.title, description: item.description || '', priority: item.priority, status: item.status, assignedTo: item.assignedTo || '', dueDate: item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '' });
+    setFormData({ title: item.title, description: item.description || '', priority: item.priority, status: item.status, assignedTo: item.assignedTo || '', dueDate: item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '', feedback: '' });
     setIsEditOpen(true);
   };
   const openDelete = (item: any) => { setSelectedItem(item); setIsDeleteOpen(true); };
@@ -77,6 +101,11 @@ export default function TasksPage() {
     const matchesStatus = statusFilter === '' || item.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+  const totalPages = Math.ceil((filteredData?.length || 0) / PAGE_SIZE);
+  const paginatedData = filteredData?.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
@@ -120,7 +149,7 @@ export default function TasksPage() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Mô tả <span className="text-slate-400 font-normal">(Tùy chọn)</span></label>
-            <input type="text" placeholder="Chi tiết công việc..." className={inputCls} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+            <textarea placeholder="Chi tiết công việc hoặc ghi chú..." className={`${inputCls} h-24 resize-none`} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
@@ -158,6 +187,14 @@ export default function TasksPage() {
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Tiêu đề</label>
             <input required type="text" className={inputCls} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">Mô tả hiện tại</label>
+            <textarea className={`${inputCls} h-24 resize-none`} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">Thêm phản hồi mới</label>
+            <textarea placeholder="Nhập phản hồi..." className={`${inputCls} h-20 resize-none`} value={formData.feedback} onChange={e => setFormData({...formData, feedback: e.target.value})} />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Trạng thái</label>
@@ -217,7 +254,7 @@ export default function TasksPage() {
           <TableBody>
             {isLoading ? (
               <TableRow><TableCell colSpan={5} className="py-12 text-center text-slate-400">Đang tải...</TableCell></TableRow>
-            ) : filteredData?.map((task: any) => (
+            ) : paginatedData?.map((task: any) => (
               <TableRow key={task.id} className="group border-b border-slate-50 transition-all duration-300 hover:bg-slate-50/80">
                 <TableCell className="px-6 py-4">
                   <div className="flex items-center gap-4">
@@ -226,7 +263,10 @@ export default function TasksPage() {
                     </div>
                     <div className="flex flex-col space-y-0.5">
                       <span className="font-semibold text-slate-800 transition-colors group-hover:text-fuchsia-600 max-w-[200px] truncate">{task.title}</span>
-                      <div className="flex items-center space-x-1.5 text-xs text-slate-400">
+                      {task.description && (
+                        <span className="text-xs text-slate-500 max-w-[250px] truncate">{task.description.replace(/\n+/g, ' ')}</span>
+                      )}
+                      <div className="flex items-center space-x-1.5 text-xs text-slate-400 mt-1">
                         <User className="h-3 w-3" /><span>{task.assignedUser?.name || 'Chưa giao'}</span>
                       </div>
                     </div>
@@ -261,6 +301,43 @@ export default function TasksPage() {
             {filteredData?.length === 0 && <TableRow><TableCell colSpan={5} className="py-12 text-center text-slate-400">Không tìm thấy dữ liệu.</TableCell></TableRow>}
           </TableBody>
         </Table>
+
+        {totalPages > 0 && (
+          <div className="flex items-center justify-between border-t border-slate-100 bg-white/50 px-6 py-4">
+            <p className="text-sm text-slate-500">
+              Hiển thị <span className="font-semibold text-slate-800">{(currentPage - 1) * PAGE_SIZE + 1}</span>–<span className="font-semibold text-slate-800">{Math.min(currentPage * PAGE_SIZE, filteredData?.length || 0)}</span> trong <span className="font-semibold text-slate-800">{filteredData?.length}</span> công việc
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ‹
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-medium transition-all ${
+                    currentPage === page
+                      ? 'border-fuchsia-500 bg-fuchsia-500 text-white shadow-sm shadow-fuchsia-500/30'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

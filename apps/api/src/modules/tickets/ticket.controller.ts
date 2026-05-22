@@ -67,8 +67,26 @@ export const createTicket = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const data = req.body;
     const ticket = await prisma.ticket.create({
-      data: { ...data, createdBy: user.id }
+      data: { ...data, createdBy: user.id },
+      include: { creator: true }
     });
+
+    const admins = await prisma.user.findMany({
+      where: { userRoles: { some: { role: { name: 'Super Admin' } } } },
+      select: { id: true }
+    });
+    if (admins.length > 0) {
+      await prisma.notification.createMany({
+        data: admins.map(admin => ({
+          userId: admin.id,
+          title: 'Yêu cầu hỗ trợ mới 🎫',
+          content: `${ticket.creator?.name || 'Nhân viên'} vừa gửi phiếu: ${ticket.title}`,
+          type: 'TICKET',
+          link: '/dashboard/tickets'
+        }))
+      });
+    }
+
     sendSuccess(res, ticket, 'Ticket created');
   } catch (error: any) {
     sendError(res, 500, 'Server error', error.message);

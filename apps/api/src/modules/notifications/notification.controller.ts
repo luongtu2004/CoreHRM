@@ -62,3 +62,13 @@ export const deleteNotification = async (req: Request, res: Response) => {
     sendError(res, 500, 'Server error', error.message);
   }
 };
+
+export const deleteAllNotifications = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    await prisma.notification.deleteMany({ where: { userId } });
+    sendSuccess(res, null, 'Đã xóa tất cả thông báo');
+  } catch (error: any) {
+    sendError(res, 500, 'Server error', error.message);
+  }
+};

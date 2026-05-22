@@ -1,7 +1,7 @@
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../src/lib/api';
-import { Bell, Clock, Calendar, DollarSign, ShieldCheck, LogIn, LogOut, ChevronRight, User } from 'lucide-react-native';
+import { Bell, Clock, Calendar, DollarSign, ShieldCheck, LogIn, LogOut, ChevronRight, User, Check, LifeBuoy } from 'lucide-react-native';
 import { router } from 'expo-router';
 
 export default function HomeScreen() {
@@ -18,7 +18,7 @@ export default function HomeScreen() {
       const res = await api.get('/notifications/unread-count');
       return res.data?.data?.count || 0;
     },
-    refetchInterval: 30000,
+    refetchInterval: 3000,
   });
 
   const { data: myAttendance } = useQuery({
@@ -37,10 +37,25 @@ export default function HomeScreen() {
     }
   });
 
+  const { data: myTasks } = useQuery({
+    queryKey: ['my-tasks'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/tasks');
+        return res.data?.data || res.data || [];
+      } catch (e) {
+        return [];
+      }
+    }
+  });
+
   const records = Array.isArray(myAttendance) ? myAttendance : [];
   const leaves  = Array.isArray(myLeaves) ? myLeaves : [];
+  const tasks   = Array.isArray(myTasks) ? myTasks : [];
+  
   const todayRecord = records.find((r: any) => new Date(r.createdAt).toDateString() === new Date().toDateString());
   const pendingLeaves = leaves.filter((l: any) => l.status === 'PENDING').length;
+  const pendingTasks = tasks.filter((t: any) => t.status === 'TODO' || t.status === 'IN_PROGRESS').length;
 
   const fmt = (d: string | null) => d ? new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
@@ -118,8 +133,8 @@ export default function HomeScreen() {
         {[
           { icon: Clock,      bg: '#eff6ff', iconBg: '#2563eb', val: records.length,              label: 'Ngày công',    route: '/(tabs)/attendance' },
           { icon: Calendar,   bg: '#fef3c7', iconBg: '#d97706', val: pendingLeaves,               label: 'Chờ duyệt NP', route: '/(tabs)/leaves' },
-          { icon: DollarSign, bg: '#f0fdf4', iconBg: '#16a34a', val: summary?.totalEmployees || 0, label: 'Nhân viên CT', route: '/(tabs)/payslips' },
-          { icon: User,       bg: '#fdf4ff', iconBg: '#7c3aed', val: '—',                         label: 'Hồ sơ',       route: '/(tabs)/profile' },
+          { icon: Check,      bg: '#f0fdf4', iconBg: '#16a34a', val: pendingTasks,                label: 'Việc chưa xong', route: '/(tabs)/tasks' },
+          { icon: DollarSign, bg: '#fdf4ff', iconBg: '#7c3aed', val: 'Lương',                     label: 'Phiếu lương', route: '/(tabs)/payslips' },
         ].map((item, i) => (
           <TouchableOpacity key={i} style={[styles.statCard, { backgroundColor: item.bg }]} onPress={() => router.push(item.route as any)}>
             <View style={[styles.statIcon, { backgroundColor: item.iconBg }]}>
@@ -137,8 +152,10 @@ export default function HomeScreen() {
         {[
           { icon: Clock,      iconBg: '#eff6ff', iconColor: '#2563eb', title: 'Lịch sử chấm công', sub: 'Xem toàn bộ lịch sử vào/ra',    route: '/(tabs)/attendance' },
           { icon: Calendar,   iconBg: '#fef3c7', iconColor: '#d97706', title: 'Đơn xin nghỉ phép', sub: 'Gửi và theo dõi đơn nghỉ phép', route: '/(tabs)/leaves' },
-          { icon: DollarSign, iconBg: '#f0fdf4', iconColor: '#16a34a', title: 'Phiếu lương',       sub: 'Xem chi tiết lương hàng tháng',  route: '/(tabs)/payslips' },
-          { icon: Bell,       iconBg: '#fdf4ff', iconColor: '#7c3aed', title: 'Thông báo',         sub: 'Tin tức và cập nhật từ HR',       route: '/notifications' },
+          { icon: Check,      iconBg: '#f0fdf4', iconColor: '#16a34a', title: 'Công việc của tôi', sub: 'Danh sách việc cần làm',       route: '/(tabs)/tasks' },
+          { icon: DollarSign, iconBg: '#fdf4ff', iconColor: '#7c3aed', title: 'Phiếu lương',       sub: 'Xem chi tiết lương hàng tháng', route: '/(tabs)/payslips' },
+          { icon: LifeBuoy,   iconBg: '#fff7ed', iconColor: '#ea580c', title: 'Phiếu hỗ trợ',      sub: 'Gửi yêu cầu IT / HR',           route: '/(tabs)/tickets' },
+          { icon: User,       iconBg: '#fff1f2', iconColor: '#e11d48', title: 'Hồ sơ cá nhân',     sub: 'Xem thông tin tài khoản',       route: '/(tabs)/profile' },
         ].map((item, i) => (
           <TouchableOpacity key={i} style={styles.menuItem} onPress={() => router.push(item.route as any)}>
             <View style={[styles.menuIcon, { backgroundColor: item.iconBg }]}>

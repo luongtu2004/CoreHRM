@@ -56,7 +56,7 @@ export default function Header() {
   const { data: unreadData } = useQuery({
     queryKey: ['notif-count'],
     queryFn: async () => (await api.get('/notifications/unread-count')).data,
-    refetchInterval: 30000, // poll every 30s
+    refetchInterval: 3000, // poll every 3s
   });
 
   const { data: notifsData } = useQuery({
@@ -97,7 +97,16 @@ export default function Header() {
 
   const handleNotifClick = (notif: any) => {
     if (!notif.isRead) markReadMutation.mutate(notif.id);
-    if (notif.link) router.push(notif.link);
+    if (notif.link) {
+      router.push(notif.link);
+      // Ép hệ thống tải lại dữ liệu mới nhất tương ứng với thông báo
+      if (notif.type === 'TICKET') queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      else if (notif.type === 'TASK') queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      else if (notif.type === 'LEAVE') {
+        queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+        queryClient.invalidateQueries({ queryKey: ['leaves'] });
+      }
+    }
     setShowNotifs(false);
   };
 

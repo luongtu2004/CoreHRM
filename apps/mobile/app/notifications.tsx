@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../src/lib/api';
-import { Bell, Check, Clock, Info, ShieldAlert, ArrowLeft } from 'lucide-react-native';
+import { Bell, Check, Clock, Info, ShieldAlert, ArrowLeft, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function NotificationsScreen() {
@@ -14,17 +14,40 @@ export default function NotificationsScreen() {
     queryFn: async () => {
       const res = await api.get('/notifications');
       return res.data?.data || res.data || [];
-    }
+    },
+    refetchInterval: 3000,
   });
 
   const markAsRead = useMutation({
     mutationFn: async (id: string) => api.patch(`/notifications/${id}/read`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+    }
   });
 
   const markAllRead = useMutation({
-    mutationFn: async () => api.post('/notifications/read-all'),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    mutationFn: async () => api.patch('/notifications/mark-all-read'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+    }
+  });
+
+  const deleteNotification = useMutation({
+    mutationFn: async (id: string) => api.delete(`/notifications/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+    }
+  });
+
+  const deleteAll = useMutation({
+    mutationFn: async () => api.delete('/notifications/all'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+    }
   });
 
   const notifications = Array.isArray(notificationsData) ? notificationsData : [];
@@ -45,9 +68,14 @@ export default function NotificationsScreen() {
           <ArrowLeft size={24} color="#1e293b" />
         </TouchableOpacity>
         <Text style={styles.title}>Thông báo</Text>
-        <TouchableOpacity onPress={() => markAllRead.mutate()}>
-          <Text style={styles.readAll}>Đọc tất cả</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <TouchableOpacity onPress={() => markAllRead.mutate()}>
+            <Text style={styles.readAll}>Đọc hết</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => deleteAll.mutate()}>
+            <Text style={styles.deleteAll}>Xóa hết</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {isLoading ? (
@@ -73,10 +101,20 @@ export default function NotificationsScreen() {
                 {renderIcon(item.type)}
               </View>
               <View style={styles.content}>
-                <Text style={[styles.message, !item.isRead && styles.messageUnread]}>{item.message}</Text>
+                <Text style={[styles.titleText, !item.isRead && styles.titleUnread]}>{item.title}</Text>
+                <Text style={styles.message} numberOfLines={2}>{item.content}</Text>
                 <Text style={styles.time}>{new Date(item.createdAt).toLocaleString('vi-VN')}</Text>
               </View>
-              {!item.isRead && <View style={styles.dot} />}
+              {item.isRead ? (
+                <TouchableOpacity 
+                  style={styles.deleteBtn} 
+                  onPress={() => deleteNotification.mutate(item.id)}
+                >
+                  <Trash2 size={16} color="#ef4444" />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.dot} />
+              )}
             </TouchableOpacity>
           )}
         />
@@ -91,15 +129,18 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
   readAll: { color: '#2563eb', fontWeight: '600', fontSize: 14 },
+  deleteAll: { color: '#ef4444', fontWeight: '600', fontSize: 14 },
   list: { padding: 16, gap: 12 },
   card: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9', gap: 12 },
   cardUnread: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
   iconBox: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
   content: { flex: 1 },
-  message: { fontSize: 14, color: '#475569', lineHeight: 20 },
-  messageUnread: { color: '#1e293b', fontWeight: 'bold' },
-  time: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
+  titleText: { fontSize: 14, color: '#475569', fontWeight: '500' },
+  titleUnread: { color: '#1e293b', fontWeight: 'bold' },
+  message: { fontSize: 13, color: '#64748b', marginTop: 2, lineHeight: 18 },
+  time: { fontSize: 11, color: '#94a3b8', marginTop: 6 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563eb' },
+  deleteBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center' },
   emptyBox: { alignItems: 'center', marginTop: 100, gap: 12 },
   emptyText: { color: '#94a3b8', fontSize: 14 }
 });

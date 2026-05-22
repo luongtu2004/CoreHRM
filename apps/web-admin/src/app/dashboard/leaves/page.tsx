@@ -221,7 +221,8 @@ export default function LeavesPage() {
       params.append('limit', '50');
       const res = await api.get(`/leaves?${params.toString()}`);
       return res.data;
-    }
+    },
+    refetchInterval: 3000, // poll every 3s for pseudo-realtime
   });
 
   const { data: leaveTypes = [] } = useQuery({
@@ -244,6 +245,11 @@ export default function LeavesPage() {
     const matchSearch = !search || l.user?.name?.toLowerCase().includes(search.toLowerCase()) || l.reason?.toLowerCase().includes(search.toLowerCase());
     return matchSearch;
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+  const totalPages = Math.ceil((filteredLeaves?.length || 0) / PAGE_SIZE);
+  const paginatedLeaves = filteredLeaves?.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const stats = {
     pending: leaves.filter((l: any) => l.status === 'PENDING').length,
@@ -348,7 +354,7 @@ export default function LeavesPage() {
                   </div>
                 </TableCell>
               </TableRow>
-            ) : filteredLeaves.map((leave: any) => {
+            ) : paginatedLeaves.map((leave: any) => {
               const cfg = statusConfig[leave.status as LeaveStatus] ?? statusConfig.PENDING;
               const isPaid = leave.leaveType?.isPaid;
               return (
@@ -434,6 +440,43 @@ export default function LeavesPage() {
             })}
           </TableBody>
         </Table>
+
+        {totalPages > 0 && (
+          <div className="flex items-center justify-between border-t border-slate-100 bg-white/50 px-6 py-4">
+            <p className="text-sm text-slate-500">
+              Hiển thị <span className="font-semibold text-slate-800">{(currentPage - 1) * PAGE_SIZE + 1}</span>–<span className="font-semibold text-slate-800">{Math.min(currentPage * PAGE_SIZE, filteredLeaves?.length || 0)}</span> trong <span className="font-semibold text-slate-800">{filteredLeaves?.length}</span> yêu cầu
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ‹
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-medium transition-all ${
+                    currentPage === page
+                      ? 'border-blue-500 bg-blue-500 text-white shadow-sm shadow-blue-500/30'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Leave Types Info */}
