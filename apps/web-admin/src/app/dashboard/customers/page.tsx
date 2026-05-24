@@ -219,9 +219,9 @@ export default function CustomersPage() {
                   </div>
                 </TableCell>
                 <TableCell className="px-6 py-4">
-                  <Badge className={getStatusBadge(customer.status).replace('dot-', '')}>
-                    <div className={`mr-1.5 h-1.5 w-1.5 rounded-full ${getStatusBadge(customer.status).match(/dot-([a-z-0-9]+)/)?.[1] || 'bg-slate-400'}`}></div>
-                    {customer.status}
+                  <Badge className={`inline-flex items-center justify-center px-2.5 py-1 ${getStatusBadge(customer.status).split(' dot-')[0]}`}>
+                    <div className={`mr-1.5 h-1.5 w-1.5 rounded-full bg-${getStatusBadge(customer.status).match(/dot-([a-z-0-9-]+)/)?.[1] || 'slate-400'}`}></div>
+                    <span>{customer.status === 'NEW' ? 'Mới' : customer.status === 'POTENTIAL' ? 'Tiềm năng' : customer.status === 'CUSTOMER' ? 'Khách hàng' : customer.status}</span>
                   </Badge>
                 </TableCell>
                 <TableCell className="px-6 py-4 text-right align-middle">

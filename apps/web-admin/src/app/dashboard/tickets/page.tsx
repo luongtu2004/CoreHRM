@@ -120,7 +120,7 @@ export default function TicketsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">phiếu hỗ trợ (Tickets)</h1>
+          <h1 className="text-2xl font-bold">Phiếu hỗ trợ (Tickets)</h1>
           <p className="text-gray-500">Quản lý các yêu cầu hỗ trợ từ khách hàng.</p>
         </div>
         <Button className="flex items-center space-x-2 rounded-full px-5 shadow-sm hover:shadow-md transition-all" onClick={() => setIsAddOpen(true)}>
@@ -265,15 +265,15 @@ export default function TicketsPage() {
                   </div>
                 </TableCell>
                 <TableCell className="px-6 py-4">
-                  <Badge className={getPriorityBadge(ticket.priority).replace('dot-', '')}>
-                    <div className={`mr-1.5 h-1.5 w-1.5 rounded-full ${getPriorityBadge(ticket.priority).match(/dot-([a-z-0-9]+)/)?.[1] || 'bg-slate-400'}`}></div>
-                    {ticket.priority === 'URGENT' ? 'Khẩn cấp' : ticket.priority === 'HIGH' ? 'Cao' : ticket.priority === 'MEDIUM' ? 'Trung bình' : 'Thấp'}
+                  <Badge className={`inline-flex items-center justify-center px-2.5 py-1 ${getPriorityBadge(ticket.priority).split(' dot-')[0]}`}>
+                    <div className={`mr-1.5 h-1.5 w-1.5 rounded-full bg-${getPriorityBadge(ticket.priority).match(/dot-([a-z-0-9-]+)/)?.[1] || 'slate-400'}`}></div>
+                    <span>{ticket.priority === 'URGENT' ? 'Khẩn cấp' : ticket.priority === 'HIGH' ? 'Cao' : ticket.priority === 'MEDIUM' ? 'Trung bình' : 'Thấp'}</span>
                   </Badge>
                 </TableCell>
                 <TableCell className="px-6 py-4">
-                  <Badge className={getStatusBadge(ticket.status).replace('dot-', '')}>
-                    <div className={`mr-1.5 h-1.5 w-1.5 rounded-full ${getStatusBadge(ticket.status).match(/dot-([a-z-0-9]+)/)?.[1] || 'bg-slate-400'}`}></div>
-                    {ticket.status === 'RESOLVED' ? 'Đã xử lý' : ticket.status === 'IN_PROGRESS' ? 'Đang xử lý' : ticket.status === 'CLOSED' ? 'Đã đóng' : 'Mới'}
+                  <Badge className={`inline-flex items-center justify-center px-2.5 py-1 ${getStatusBadge(ticket.status).split(' dot-')[0]}`}>
+                    <div className={`mr-1.5 h-1.5 w-1.5 rounded-full bg-${getStatusBadge(ticket.status).match(/dot-([a-z-0-9-]+)/)?.[1] || 'slate-400'}`}></div>
+                    <span>{ticket.status === 'RESOLVED' ? 'Đã xử lý' : ticket.status === 'IN_PROGRESS' ? 'Đang xử lý' : ticket.status === 'CLOSED' ? 'Đã đóng' : 'Mới'}</span>
                   </Badge>
                 </TableCell>
                 <TableCell className="px-6 py-4">

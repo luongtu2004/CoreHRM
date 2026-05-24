@@ -273,15 +273,15 @@ export default function TasksPage() {
                   </div>
                 </TableCell>
                 <TableCell className="px-6 py-4">
-                  <Badge className={getPriorityBadge(task.priority).replace('dot-', '')}>
-                    <div className={`mr-1.5 h-1.5 w-1.5 rounded-full ${getPriorityBadge(task.priority).match(/dot-([a-z-0-9]+)/)?.[1] || 'bg-slate-400'}`}></div>
-                    {task.priority === 'URGENT' ? 'Khẩn cấp' : task.priority === 'HIGH' ? 'Cao' : task.priority === 'MEDIUM' ? 'Trung bình' : 'Thấp'}
+                  <Badge className={`inline-flex items-center justify-center px-2.5 py-1 ${getPriorityBadge(task.priority).split(' dot-')[0]}`}>
+                    <div className={`mr-1.5 h-1.5 w-1.5 rounded-full bg-${getPriorityBadge(task.priority).match(/dot-([a-z-0-9-]+)/)?.[1] || 'slate-400'}`}></div>
+                    <span>{task.priority === 'URGENT' ? 'Khẩn cấp' : task.priority === 'HIGH' ? 'Cao' : task.priority === 'MEDIUM' ? 'Trung bình' : 'Thấp'}</span>
                   </Badge>
                 </TableCell>
                 <TableCell className="px-6 py-4">
-                  <Badge className={getStatusBadge(task.status).replace('dot-', '')}>
-                    <div className={`mr-1.5 h-1.5 w-1.5 rounded-full ${getStatusBadge(task.status).match(/dot-([a-z-0-9]+)/)?.[1] || 'bg-slate-400'}`}></div>
-                    {task.status === 'DONE' ? 'Hoàn thành' : task.status === 'IN_PROGRESS' ? 'Đang làm' : task.status === 'CANCELLED' ? 'Đã hủy' : 'Cần làm'}
+                  <Badge className={`inline-flex items-center justify-center px-2.5 py-1 ${getStatusBadge(task.status).split(' dot-')[0]}`}>
+                    <div className={`mr-1.5 h-1.5 w-1.5 rounded-full bg-${getStatusBadge(task.status).match(/dot-([a-z-0-9-]+)/)?.[1] || 'slate-400'}`}></div>
+                    <span>{task.status === 'DONE' ? 'Hoàn thành' : task.status === 'IN_PROGRESS' ? 'Đang làm' : task.status === 'CANCELLED' ? 'Đã hủy' : 'Cần làm'}</span>
                   </Badge>
                 </TableCell>
                 <TableCell className="px-6 py-4">

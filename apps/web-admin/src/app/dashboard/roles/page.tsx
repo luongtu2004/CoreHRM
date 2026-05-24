@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Plus, Search, Shield, Edit, Trash2, Lock, Loader2 } from 'lucide-react';
+import { Plus, Search, Shield, Edit, Trash2, Lock, Loader2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -18,6 +18,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import FormDrawer from '@/components/ui/FormDrawer';
 import { toast } from 'sonner';
 
+const translateAction = (action: string) => {
+  const map: any = { create: 'Tạo', read: 'Xem', update: 'Sửa', delete: 'Xóa' };
+  return map[action] || action;
+};
+
+const translateModule = (module: string) => {
+  const map: any = {
+    users: 'người dùng',
+    roles: 'vai trò',
+    departments: 'phòng ban',
+    employees: 'nhân viên',
+    customers: 'khách hàng',
+    tasks: 'công việc',
+    tickets: 'hỗ trợ',
+  };
+  return map[module] || module;
+};
+
 export default function RolesPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -25,14 +43,25 @@ export default function RolesPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isPermOpen, setIsPermOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
   
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [formData, setFormData] = useState({ name: '', description: '' });
 
   const { data: roles, isLoading } = useQuery({
     queryKey: ['roles'],
     queryFn: async () => {
       const response = await api.get('/roles');
+      return response.data;
+    }
+  });
+
+  const { data: allPermissions } = useQuery({
+    queryKey: ['permissions'],
+    queryFn: async () => {
+      const response = await api.get('/roles/permissions');
       return response.data;
     }
   });
@@ -59,6 +88,18 @@ export default function RolesPage() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Lỗi khi cập nhật vai trò');
+    }
+  });
+
+  const assignPermMutation = useMutation({
+    mutationFn: async (permissionIds: string[]) => await api.post(`/roles/${selectedItem.id}/permissions`, { permissionIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      setIsPermOpen(false);
+      toast.success('Cập nhật quyền thành công');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Lỗi khi cập nhật quyền');
     }
   });
 
@@ -94,6 +135,35 @@ export default function RolesPage() {
     setSelectedItem(item);
     setIsDeleteOpen(true);
   };
+
+  const openPermissions = (item: any) => {
+    setSelectedItem(item);
+    setSelectedPermissions(item.rolePermissions?.map((rp: any) => rp.permissionId) || []);
+    setIsPermOpen(true);
+  };
+
+  const openView = (item: any) => {
+    setSelectedItem(item);
+    setIsViewOpen(true);
+  };
+
+  const handleAssignSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    assignPermMutation.mutate(selectedPermissions);
+  };
+
+  const togglePermission = (id: string) => {
+    setSelectedPermissions(prev => 
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
+  };
+
+  // Group permissions by module
+  const groupedPermissions = allPermissions?.reduce((acc: any, curr: any) => {
+    if (!acc[curr.module]) acc[curr.module] = [];
+    acc[curr.module].push(curr);
+    return acc;
+  }, {});
 
   const filteredData = roles?.filter((item: any) => 
     item.name.toLowerCase().includes(search.toLowerCase())
@@ -156,6 +226,69 @@ export default function RolesPage() {
         </form>
       </FormDrawer>
 
+      <FormDrawer open={isPermOpen} onClose={() => setIsPermOpen(false)} title="Phân quyền" subtitle={`Cấu hình quyền hạn cho ${selectedItem?.name}`} accentColor="purple">
+        <form onSubmit={handleAssignSubmit} className="space-y-6">
+          <div className="space-y-6 max-h-[60vh] overflow-y-auto px-1">
+            {groupedPermissions && Object.keys(groupedPermissions).map(module => (
+              <div key={module} className="bg-slate-50 border border-slate-100 rounded-xl p-4">
+                <h3 className="font-semibold text-slate-800 capitalize mb-3 border-b border-slate-200 pb-2">{module}</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {groupedPermissions[module].map((perm: any) => (
+                    <label key={perm.id} className="flex items-center space-x-2 cursor-pointer group">
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                        checked={selectedPermissions.includes(perm.id)}
+                        onChange={() => togglePermission(perm.id)}
+                      />
+                      <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{translateAction(perm.action)} {translateModule(perm.module)}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3 pt-4 border-t border-slate-100">
+            <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setIsPermOpen(false)}>Hủy</Button>
+            <Button type="submit" className="flex-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white" disabled={assignPermMutation.isPending}>
+              {assignPermMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Lưu quyền hạn
+            </Button>
+          </div>
+        </form>
+      </FormDrawer>
+
+      <FormDrawer open={isViewOpen} onClose={() => setIsViewOpen(false)} title="Chi tiết vai trò" subtitle={selectedItem?.name} accentColor="purple">
+        <div className="space-y-6">
+          <div>
+            <h3 className="font-semibold text-slate-800 mb-2">Thông tin chung</h3>
+            <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-100">
+              <p className="text-sm"><span className="text-slate-500 w-24 inline-block">Tên vai trò:</span> <span className="font-medium">{selectedItem?.name}</span></p>
+              <p className="text-sm"><span className="text-slate-500 w-24 inline-block">Mô tả:</span> {selectedItem?.description || 'Không có'}</p>
+              <p className="text-sm"><span className="text-slate-500 w-24 inline-block">Ngày tạo:</span> {selectedItem && new Date(selectedItem.createdAt).toLocaleDateString('vi-VN')}</p>
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              Quyền hạn <Badge variant="secondary" className="bg-slate-100 text-slate-600">{selectedItem?.rolePermissions?.length || 0}</Badge>
+            </h3>
+            {selectedItem?.rolePermissions?.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {selectedItem.rolePermissions.map((rp: any) => (
+                  <Badge key={rp.permissionId} className="bg-purple-50 text-purple-700 border border-purple-100 px-2.5 py-1 font-medium">
+                    {translateAction(rp.permission?.action)} {translateModule(rp.permission?.module)}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center p-6 bg-slate-50 border border-slate-100 rounded-xl">
+                <p className="text-sm text-slate-500">Vai trò này chưa được cấp quyền nào.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </FormDrawer>
+
       {/* Delete Modal */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent>
@@ -213,33 +346,36 @@ export default function RolesPage() {
                   </div>
                 </TableCell>
                 <TableCell className="max-w-xs px-6 py-4 text-sm font-medium text-slate-500">
-                  {role.description || 'No description'}
+                  {role.description || 'Không có mô tả'}
                 </TableCell>
                 <TableCell className="px-6 py-4">
                   <div className="flex flex-wrap gap-1.5">
                     {role.rolePermissions?.slice(0, 3).map((rp: any) => (
                       <Badge key={rp.permissionId} className="bg-slate-100 text-slate-600 border-none px-2 py-0.5 font-medium hover:bg-slate-200">
-                        {rp.permission?.name}
+                        {translateAction(rp.permission?.action)} {translateModule(rp.permission?.module)}
                       </Badge>
                     ))}
                     {role.rolePermissions?.length > 3 && (
-                      <span className="text-xs font-medium text-slate-400 self-center">+{role.rolePermissions.length - 3} more</span>
+                      <span className="text-xs font-medium text-slate-400 self-center">+{role.rolePermissions.length - 3} quyền khác</span>
                     )}
                   </div>
                 </TableCell>
                 <TableCell className="px-6 py-4 text-sm font-medium text-slate-500">
-                  {new Date(role.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  {new Date(role.createdAt).toLocaleDateString('vi-VN')}
                 </TableCell>
                 <TableCell className="px-6 py-4 text-right align-middle">
-                  <div className="flex items-center justify-end gap-2 opacity-0 transition-all duration-300 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 focus-within:opacity-100 sm:opacity-100 md:opacity-0 md:translate-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => {}} className="h-10 w-10 rounded-full text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 hover:shadow-md transition-all" title="Quản lý quyền">
-                      <Lock className="h-5 w-5" />
+                  <div className="flex items-center justify-end gap-1 opacity-0 transition-all duration-300 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 focus-within:opacity-100 sm:opacity-100 md:opacity-0 md:translate-x-2">
+                    <Button variant="ghost" size="icon" onClick={() => openView(role)} className="h-9 w-9 rounded-full text-slate-400 hover:bg-amber-50 hover:text-amber-600 hover:shadow-md transition-all" title="Xem chi tiết">
+                      <Eye className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(role)} className="h-10 w-10 rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-600 hover:shadow-md transition-all">
-                      <Edit className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" onClick={() => openPermissions(role)} className="h-9 w-9 rounded-full text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 hover:shadow-md transition-all" title="Quản lý quyền">
+                      <Lock className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openDelete(role)} className="h-10 w-10 rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:shadow-md transition-all">
-                      <Trash2 className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(role)} className="h-9 w-9 rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-600 hover:shadow-md transition-all">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => openDelete(role)} className="h-9 w-9 rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:shadow-md transition-all">
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>

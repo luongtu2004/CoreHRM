@@ -27,23 +27,31 @@ npx prisma db seed
 cd ../..
 ```
 
-**Bước 4 — Chạy Backend + Web** *(mở 2 terminal)*
+**Bước 4 — Chạy Backend, Web và Mobile** *(mở 3 terminal)*
 ```bash
 # Terminal 1
 npm run dev:api
 
 # Terminal 2
 npm run dev:web
+
+# Terminal 3
+npm run dev:mobile
 ```
 
 ---
 
 ## Từ lần sau trở đi
 
-Chỉ cần mở Docker Desktop rồi chạy 2 lệnh:
+**Bước 1: Bật Docker Desktop**
+- Bắt buộc phải mở phần mềm Docker Desktop trên máy tính và đợi nó báo "Running" (màu xanh). Database sẽ tự chạy ngầm.
+
+**Bước 2: Chạy các ứng dụng**
+Mở 3 tab Terminal (đảm bảo đang ở **thư mục gốc** `CoreHRM-main`) và chạy 3 lệnh sau:
 ```bash
-npm run dev:api   # Terminal 1
-npm run dev:web   # Terminal 2
+npm run dev:api      # Terminal 1: Chạy Backend
+npm run dev:web      # Terminal 2: Chạy Web Admin
+npm run dev:mobile   # Terminal 3: Chạy Mobile App
 ```
 
 ---
@@ -54,6 +62,7 @@ npm run dev:web   # Terminal 2
 |---|---|
 | 🌐 Web Admin | http://localhost:3000 |
 | ⚙️ API | http://localhost:4000 |
+| 📱 Mobile App | Expo Go (Quét mã QR trên terminal) |
 
 **Tài khoản mặc định:** `admin@example.com` / `123456`
 

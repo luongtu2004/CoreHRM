@@ -4,6 +4,17 @@ import { sendSuccess, sendError } from '../../utils/response';
 
 const prisma = new PrismaClient();
 
+export const getAllPermissions = async (req: Request, res: Response) => {
+  try {
+    const permissions = await prisma.permission.findMany({
+      orderBy: { module: 'asc' }
+    });
+    sendSuccess(res, permissions);
+  } catch (error: any) {
+    sendError(res, 500, 'Server error', error.message);
+  }
+};
+
 export const getRoles = async (req: Request, res: Response) => {
   try {
     const roles = await prisma.role.findMany({ include: { rolePermissions: { include: { permission: true } } } });

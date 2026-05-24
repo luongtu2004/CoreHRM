@@ -128,3 +128,151 @@
     @apply font-sans;
   }
 }
+
+/* ── Dark mode global overrides ── */
+/* Since components use hardcoded Tailwind colors, we override them via CSS */
+.dark {
+  color-scheme: dark;
+}
+
+/* Layout structure */
+.dark .min-h-screen {
+  background-color: oklch(0.13 0.01 260) !important;
+}
+
+/* Sidebar */
+.dark aside {
+  background-color: oklch(0.18 0.01 260) !important;
+  border-color: oklch(0.25 0.01 260) !important;
+}
+.dark aside .border-b,
+.dark aside .border-t {
+  border-color: oklch(0.25 0.01 260) !important;
+}
+.dark aside p.text-slate-400 {
+  color: oklch(0.5 0.01 260) !important;
+}
+.dark aside a.text-slate-600,
+.dark aside button.text-slate-600 {
+  color: oklch(0.65 0.01 260) !important;
+}
+.dark aside a:hover,
+.dark aside button:hover:not(.hover\:bg-red-50) {
+  background-color: oklch(0.24 0.01 260) !important;
+  color: oklch(0.9 0 0) !important;
+}
+
+/* Header */
+.dark header {
+  background-color: oklch(0.18 0.01 260) !important;
+  border-color: oklch(0.25 0.01 260) !important;
+}
+
+/* Main content area */
+.dark main {
+  background-color: oklch(0.13 0.01 260) !important;
+}
+
+/* Cards / Panels */
+.dark .bg-white,
+.dark .bg-white\/50 {
+  background-color: oklch(0.2 0.01 260) !important;
+}
+.dark .bg-gray-50,
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/80 {
+  background-color: oklch(0.17 0.01 260) !important;
+}
+
+/* Borders */
+.dark .border-slate-200,
+.dark .border-slate-200\/60,
+.dark .border-slate-100,
+.dark .border-slate-100\/80 {
+  border-color: oklch(0.28 0.01 260) !important;
+}
+
+/* Text */
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: oklch(0.92 0 0) !important;
+}
+.dark .text-slate-700 {
+  color: oklch(0.82 0 0) !important;
+}
+.dark .text-slate-600 {
+  color: oklch(0.7 0 0) !important;
+}
+.dark .text-slate-500 {
+  color: oklch(0.58 0 0) !important;
+}
+.dark .text-slate-400 {
+  color: oklch(0.48 0 0) !important;
+}
+.dark .text-gray-500,
+.dark .text-gray-600 {
+  color: oklch(0.6 0 0) !important;
+}
+
+/* Table */
+.dark table {
+  background-color: transparent !important;
+}
+.dark thead tr,
+.dark .bg-slate-50\/50 {
+  background-color: oklch(0.17 0.01 260) !important;
+}
+.dark tbody tr:hover,
+.dark .hover\:bg-slate-50\/80:hover {
+  background-color: oklch(0.22 0.01 260) !important;
+}
+.dark .border-slate-50 {
+  border-color: oklch(0.24 0.01 260) !important;
+}
+
+/* Input fields */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: oklch(0.22 0.01 260) !important;
+  border-color: oklch(0.3 0.01 260) !important;
+  color: oklch(0.9 0 0) !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: oklch(0.45 0 0) !important;
+}
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  background-color: oklch(0.24 0.01 260) !important;
+}
+
+/* Badges / Pills (status) */
+.dark .bg-slate-100 {
+  background-color: oklch(0.26 0.01 260) !important;
+}
+
+/* Hover states for buttons */
+.dark .hover\:bg-slate-50:hover {
+  background-color: oklch(0.24 0.01 260) !important;
+}
+
+/* Shadow overrides */
+.dark .shadow-\[0_8px_30px_rgb\(0\,0\,0\,0\.04\)\] {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3) !important;
+}
+.dark .shadow-\[0_4px_20px_rgba\(0\,0\,0\,0\.04\)\] {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Dividers */
+.dark .divide-slate-100 > * + * {
+  border-color: oklch(0.26 0.01 260) !important;
+}
+
+/* Pagination buttons */
+.dark .border-slate-200 {
+  border-color: oklch(0.3 0.01 260) !important;
+}

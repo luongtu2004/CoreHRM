@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Plus, Search, Building2, Edit, Trash2, Users, Loader2 } from 'lucide-react';
+import { Plus, Search, Building2, Edit, Trash2, Users, Loader2, Eye, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -25,6 +25,8 @@ export default function DepartmentsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewDepartmentId, setViewDepartmentId] = useState<string | null>(null);
   
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [formData, setFormData] = useState({ name: '', description: '', status: 'ACTIVE' });
@@ -95,6 +97,21 @@ export default function DepartmentsPage() {
     setIsDeleteOpen(true);
   };
 
+  const openView = (item: any) => {
+    setViewDepartmentId(item.id);
+    setIsViewOpen(true);
+  };
+
+  const { data: departmentDetails, isLoading: isDetailsLoading } = useQuery({
+    queryKey: ['department', viewDepartmentId],
+    queryFn: async () => {
+      if (!viewDepartmentId) return null;
+      const response = await api.get(`/departments/${viewDepartmentId}`);
+      return response.data;
+    },
+    enabled: !!viewDepartmentId,
+  });
+
   const filteredData = departments?.filter((item: any) => 
     item.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -118,6 +135,52 @@ export default function DepartmentsPage() {
           <Plus className="h-4 w-4" /><span>Thêm phòng ban</span>
         </Button>
       </div>
+
+      <FormDrawer open={isViewOpen} onClose={() => setIsViewOpen(false)} title="Chi tiết phòng ban" subtitle={departmentDetails?.name || 'Đang tải...'} accentColor="amber">
+        {isDetailsLoading ? (
+          <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+        ) : (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-2">Thông tin chung</h3>
+              <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-100">
+                <p className="text-sm"><span className="text-slate-500 w-24 inline-block">Mô tả:</span> {departmentDetails?.description || 'Không có'}</p>
+                <p className="text-sm"><span className="text-slate-500 w-24 inline-block">Trạng thái:</span> {departmentDetails?.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}</p>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                Danh sách nhân viên <Badge variant="secondary" className="bg-slate-100 text-slate-600">{departmentDetails?.employees?.length || 0}</Badge>
+              </h3>
+              {departmentDetails?.employees?.length > 0 ? (
+                <div className="space-y-3">
+                  {departmentDetails.employees.map((emp: any) => (
+                    <div key={emp.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-colors">
+                      <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                        <UserCircle className="h-6 w-6 text-slate-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-800 text-sm truncate">{emp.user?.name}</p>
+                        <p className="text-xs text-slate-500 truncate">{emp.user?.email}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <Badge variant="outline" className="text-xs font-normal border-slate-200 text-slate-600">
+                          {emp.position || 'Nhân viên'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center p-6 bg-slate-50 border border-slate-100 rounded-xl">
+                  <p className="text-sm text-slate-500">Phòng ban này chưa có nhân viên nào.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </FormDrawer>
 
       <FormDrawer open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Thêm phòng ban mới" subtitle="Tạo phòng ban mới trong công ty" accentColor="amber">
         <form onSubmit={handleAddSubmit} className="space-y-5">
@@ -225,7 +288,7 @@ export default function DepartmentsPage() {
                 <TableCell className="px-6 py-4">
                   <div className="flex items-center space-x-1.5 text-sm font-medium text-slate-600">
                     <Users className="h-4 w-4 text-slate-400" />
-                    <span>{dept.employees?.length || 0} thành viên</span>
+                    <span>{dept._count?.employees || 0} thành viên</span>
                   </div>
                 </TableCell>
                 <TableCell className="px-6 py-4">
@@ -236,6 +299,14 @@ export default function DepartmentsPage() {
                 </TableCell>
                 <TableCell className="px-6 py-4 text-right align-middle">
                   <div className="flex items-center justify-end gap-1.5 opacity-0 transition-all duration-300 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 focus-within:opacity-100 sm:opacity-100 md:opacity-0 md:translate-x-2">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => openView(dept)}
+                      className="h-8 w-8 rounded-full text-slate-400 hover:bg-amber-50 hover:text-amber-600 hover:shadow-sm"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
