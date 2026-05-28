@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import path from 'path';
 import authRoutes from './modules/auth/auth.routes';
 import { sendError } from './utils/response';
 
@@ -9,6 +10,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
+
+// Serve static files (ảnh selfie chấm công)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 import userRoutes from './modules/users/user.routes';
 import roleRoutes from './modules/roles/role.routes';

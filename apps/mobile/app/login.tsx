@@ -109,11 +109,29 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>Thông tin hỗ trợ</Text>
-            <View style={styles.dividerLine} />
+          {/* Demo accounts */}
+          <View style={styles.demoSection}>
+            <View style={styles.demoDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>Tài khoản thử nghiệm</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            <View style={styles.demoRow}>
+              <TouchableOpacity
+                style={styles.demoBtn}
+                onPress={() => { setEmail('nhanvien@demo.com'); setPassword('123456'); setError(''); }}
+              >
+                <Text style={styles.demoBtnLabel}>👤 Nhân viên Demo</Text>
+                <Text style={styles.demoBtnSub}>nhanvien@demo.com</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.demoBtn, styles.demoBtnAdmin]}
+                onPress={() => { setEmail('admin@example.com'); setPassword('123456'); setError(''); }}
+              >
+                <Text style={[styles.demoBtnLabel, { color: '#1d4ed8' }]}>🛡️ Admin</Text>
+                <Text style={[styles.demoBtnSub, { color: '#3b82f6' }]}>admin@example.com</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Contact IT */}
@@ -184,8 +202,20 @@ const styles = StyleSheet.create({
   loginBtnDisabled: { opacity: 0.7 },
   loginBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', letterSpacing: 0.5 },
 
+  // Demo buttons
+  demoSection: { marginTop: 16 },
+  demoDivider: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
+  demoRow: { flexDirection: 'row', gap: 10 },
+  demoBtn: {
+    flex: 1, backgroundColor: '#f8fafc', borderRadius: 14, padding: 14,
+    borderWidth: 1.5, borderColor: '#e2e8f0', alignItems: 'center', gap: 4,
+  },
+  demoBtnAdmin: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
+  demoBtnLabel: { fontSize: 13, fontWeight: '700', color: '#334155' },
+  demoBtnSub: { fontSize: 11, color: '#94a3b8' },
+
   // Divider
-  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 10 },
+  divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 16, gap: 10 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#f1f5f9' },
   dividerText: { fontSize: 12, color: '#94a3b8', fontWeight: '500' },
 

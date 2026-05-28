@@ -9,7 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "CoreHRM cần truy cập vị trí để xác nhận bạn đang ở văn phòng khi chấm công.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "CoreHRM cần truy cập vị trí để xác nhận bạn đang ở văn phòng khi chấm công.",
+        "NSCameraUsageDescription": "CoreHRM cần camera để chụp ảnh selfie xác thực danh tính khi chấm công."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +24,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA"
+      ]
     },
     "router": {
       "origin": "app"
@@ -43,7 +53,19 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "CoreHRM cần truy cập vị trí để xác nhận bạn đang ở văn phòng khi chấm công."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "CoreHRM cần camera để chụp ảnh selfie xác thực danh tính khi chấm công."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

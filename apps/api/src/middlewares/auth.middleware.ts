@@ -41,3 +41,22 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     return sendError(res, 401, 'Invalid Token');
   }
 };
+
+export const authorizeRoles = (...allowedRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (!user) return sendError(res, 401, 'Unauthorized');
+
+    // Mặc định ADMIN có quyền truy cập tất cả
+    const roles = ['ADMIN', ...allowedRoles];
+    const userRoles = user.userRoles.map((ur: any) => ur.role.name);
+    
+    const hasRole = roles.some(r => userRoles.includes(r));
+
+    if (!hasRole) {
+      return sendError(res, 403, 'Bạn không có quyền thực hiện chức năng này!');
+    }
+    
+    next();
+  };
+};

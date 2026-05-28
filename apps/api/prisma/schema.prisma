@@ -172,19 +172,41 @@ model ActivityLog {
 }
 
 model Attendance {
-  id          String    @id @default(uuid())
-  userId      String
-  checkIn     DateTime  @default(now())
-  checkOut    DateTime?
-  date        DateTime  @default(now())
-  status      String    @default("PRESENT") // PRESENT | LATE | EARLY_LEAVE
-  note        String?
-  locationIn  String?
-  locationOut String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String    @id @default(uuid())
+  userId       String
+  checkIn      DateTime  @default(now())
+  checkOut     DateTime?
+  date         DateTime  @default(now())
+  status       String    @default("PRESENT") // PRESENT | LATE | EARLY_LEAVE | ABSENT
+  note         String?
+  locationIn   String?
+  locationOut  String?
+  // GPS coordinates
+  checkInLat   Float?
+  checkInLng   Float?
+  checkOutLat  Float?
+  checkOutLng  Float?
+  // Selfie photos
+  photoIn      String?   // URL/path to check-in selfie
+  photoOut     String?   // URL/path to check-out selfie
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Office location settings for GPS geofencing
+model OfficeSettings {
+  id        String   @id @default(uuid())
+  name      String   @default("Văn phòng chính")
+  latitude  Float    @default(10.7769) // Tọa độ mặc định: TP.HCM
+  longitude Float    @default(106.7009)
+  radius    Int      @default(100)     // Bán kính cho phép (mét)
+  checkInStart  String @default("08:00")  // Giờ bắt đầu được phép check-in (HH:mm)
+  checkInEnd    String @default("09:30")  // Giờ kết thúc check-in (sau đó bị coi là muộn)
+  workEndTime   String @default("17:30")  // Giờ kết thúc làm việc
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Notification {

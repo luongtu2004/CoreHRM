@@ -59,16 +59,9 @@ export default function HomeScreen() {
 
   const fmt = (d: string | null) => d ? new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
-  const checkIn = useMutation({
-    mutationFn: () => api.post('/attendance/check-in', { location: 'Văn phòng' }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['my-attendance'] }); Alert.alert('✅ Thành công', 'Đã chấm công vào!'); },
-    onError: (e: any) => Alert.alert('❌ Lỗi', e.response?.data?.message || 'Đã chấm công hôm nay rồi!')
-  });
-  const checkOut = useMutation({
-    mutationFn: () => api.post('/attendance/check-out', { location: 'Văn phòng' }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['my-attendance'] }); Alert.alert('✅ Thành công', 'Đã chấm công ra!'); },
-    onError: (e: any) => Alert.alert('❌ Lỗi', e.response?.data?.message || 'Chưa chấm công vào!')
-  });
+  const goToAttendance = () => {
+    router.push('/(tabs)/attendance');
+  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -110,16 +103,14 @@ export default function HomeScreen() {
       {/* Check-in/out */}
       <View style={styles.checkRow}>
         {!todayRecord ? (
-          <TouchableOpacity style={styles.checkInBtn} onPress={() => checkIn.mutate()} disabled={checkIn.isPending}>
-            {checkIn.isPending ? <ActivityIndicator color="#fff" /> : (
-              <><LogIn size={20} color="#fff" /><Text style={styles.checkBtnText}>Bắt đầu làm việc</Text></>
-            )}
+          <TouchableOpacity style={styles.checkInBtn} onPress={goToAttendance}>
+            <LogIn size={20} color="#fff" />
+            <Text style={styles.checkBtnText}>Bắt đầu làm việc (Chụp ảnh)</Text>
           </TouchableOpacity>
         ) : !todayRecord.checkOut ? (
-          <TouchableOpacity style={styles.checkOutBtn} onPress={() => checkOut.mutate()} disabled={checkOut.isPending}>
-            {checkOut.isPending ? <ActivityIndicator color="#fff" /> : (
-              <><LogOut size={20} color="#fff" /><Text style={styles.checkBtnText}>Kết thúc làm việc</Text></>
-            )}
+          <TouchableOpacity style={styles.checkOutBtn} onPress={goToAttendance}>
+            <LogOut size={20} color="#fff" />
+            <Text style={styles.checkBtnText}>Kết thúc làm việc (Chụp ảnh)</Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.doneBadge}>
