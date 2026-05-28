@@ -269,7 +269,7 @@ export const adminCorrectAttendance = async (req: Request, res: Response) => {
 export const deleteAttendance = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    await prisma.attendance.delete({ where: { id } });
+    await prisma.attendance.delete({ where: { id: id as string } });
     sendSuccess(res, null, 'Đã xóa bản ghi chấm công!');
   } catch (error: any) {
     sendError(res, 500, 'Lỗi máy chủ', error.message);

@@ -178,7 +178,6 @@ export default function TasksScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-      )}
 
       {/* Task Details Modal */}
       <Modal visible={!!selectedTask} animationType="slide" transparent={true}>

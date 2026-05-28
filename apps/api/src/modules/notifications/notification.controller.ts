@@ -31,9 +31,10 @@ export const getUnreadCount = async (req: Request, res: Response) => {
 export const markAsRead = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    await prisma.notification.update({
-      where: { id: req.params.id, userId }
-    , data: { isRead: true } });
+    await prisma.notification.updateMany({
+      where: { id: req.params.id as string, userId },
+      data: { isRead: true } 
+    });
     sendSuccess(res, null, 'Đã đánh dấu đã đọc');
   } catch (error: any) {
     sendError(res, 500, 'Server error', error.message);
@@ -56,7 +57,7 @@ export const markAllAsRead = async (req: Request, res: Response) => {
 export const deleteNotification = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    await prisma.notification.delete({ where: { id: req.params.id, userId } });
+    await prisma.notification.deleteMany({ where: { id: req.params.id as string, userId } });
     sendSuccess(res, null, 'Đã xóa thông báo');
   } catch (error: any) {
     sendError(res, 500, 'Server error', error.message);
