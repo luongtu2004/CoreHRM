@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import {
   User, Lock, Bell, Globe, Palette, Shield, Save,
   Eye, EyeOff, Check, Monitor, Sun, Moon, CheckCircle2,
-  AlertCircle, Info, Loader2, RefreshCw,
+  AlertCircle, Info, Loader2, RefreshCw, Building2, MapPin, Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import { useDensity } from '@/hooks/useDensity';
 
 const tabs = [
   { id: 'profile', label: 'Hồ sơ cá nhân', icon: User },
+  { id: 'company', label: 'Cấu hình Công ty', icon: Building2 },
   { id: 'security', label: 'Bảo mật', icon: Lock },
   { id: 'notifications', label: 'Thông báo', icon: Bell },
   { id: 'appearance', label: 'Giao diện', icon: Palette },
@@ -142,6 +143,40 @@ export default function SettingsPage() {
 
   // ── Appearance ──
 
+  // ── Company Settings ──
+  const { data: officeData, isLoading: officeLoading } = useQuery({
+    queryKey: ['officeSettings'],
+    queryFn: async () => {
+      const res = await api.get('/attendance/office-settings');
+      return res.data?.data || res.data;
+    },
+  });
+
+  const [companySettings, setCompanySettings] = useState({
+    name: '', latitude: 0, longitude: 0, radius: 100,
+    checkInStart: '08:00', checkInEnd: '09:30', workEndTime: '17:30'
+  });
+
+  useEffect(() => {
+    if (officeData) {
+      setCompanySettings({
+        name: officeData.name || 'Văn phòng chính',
+        latitude: officeData.latitude || 10.7769,
+        longitude: officeData.longitude || 106.7009,
+        radius: officeData.radius || 100,
+        checkInStart: officeData.checkInStart || '08:00',
+        checkInEnd: officeData.checkInEnd || '09:30',
+        workEndTime: officeData.workEndTime || '17:30',
+      });
+    }
+  }, [officeData]);
+
+  const companyMutation = useMutation({
+    mutationFn: (data: any) => api.put('/attendance/office-settings', data),
+    onSuccess: () => toast.success('Đã lưu cấu hình công ty!'),
+    onError: () => toast.error('Lỗi khi lưu cấu hình công ty'),
+  });
+
   const initials = profile.name
     .split(' ').map((n: string) => n[0]).filter(Boolean).slice(-2).join('').toUpperCase() || 'U';
 
@@ -243,6 +278,85 @@ export default function SettingsPage() {
                       </Button>
                     </div>
                   </>
+                )}
+              </div>
+            )}
+
+            {/* ── COMPANY SETTINGS TAB ── */}
+            {activeTab === 'company' && (
+              <div>
+                <SectionHeader title="Cấu hình Công ty (GPS & Chấm công)" desc="Thiết lập thời gian làm việc và tọa độ điểm danh cho toàn công ty." />
+                
+                {officeLoading ? (
+                  <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex gap-3">
+                      <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                      <p className="text-sm text-blue-800">
+                        Khi thiết lập tọa độ GPS, nhân viên dùng App Mobile sẽ chỉ được phép check-in nếu đứng trong vòng <strong>bán kính {companySettings.radius}m</strong> so với tọa độ văn phòng.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="md:col-span-2">
+                        <label className={labelCls}>Tên văn phòng chính</label>
+                        <div className="relative">
+                          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                          <input className={inputCls + " pl-10"} value={companySettings.name} onChange={e => setCompanySettings({...companySettings, name: e.target.value})} placeholder="VD: Trụ sở chính" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="h-5 w-5 text-slate-500" />
+                          <h3 className="font-bold text-slate-700">Thời gian làm việc</h3>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Giờ bắt đầu Check-in</label>
+                          <input type="time" className={inputCls} value={companySettings.checkInStart} onChange={e => setCompanySettings({...companySettings, checkInStart: e.target.value})} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Giờ kết thúc Check-in (sau giờ này tính là muộn)</label>
+                          <input type="time" className={inputCls} value={companySettings.checkInEnd} onChange={e => setCompanySettings({...companySettings, checkInEnd: e.target.value})} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Giờ tan làm (Check-out)</label>
+                          <input type="time" className={inputCls} value={companySettings.workEndTime} onChange={e => setCompanySettings({...companySettings, workEndTime: e.target.value})} />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <MapPin className="h-5 w-5 text-slate-500" />
+                          <h3 className="font-bold text-slate-700">Tọa độ GPS Văn phòng</h3>
+                        </div>
+                        <div>
+                          <label className={labelCls}>Vĩ độ (Latitude)</label>
+                          <input type="number" step="any" className={inputCls} value={companySettings.latitude} onChange={e => setCompanySettings({...companySettings, latitude: parseFloat(e.target.value)})} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Kinh độ (Longitude)</label>
+                          <input type="number" step="any" className={inputCls} value={companySettings.longitude} onChange={e => setCompanySettings({...companySettings, longitude: parseFloat(e.target.value)})} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Bán kính cho phép (mét)</label>
+                          <input type="number" className={inputCls} value={companySettings.radius} onChange={e => setCompanySettings({...companySettings, radius: parseInt(e.target.value)})} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end mt-6 pt-4 border-t border-slate-100">
+                      <Button
+                        onClick={() => companyMutation.mutate(companySettings)}
+                        disabled={companyMutation.isPending}
+                        className="rounded-xl px-5 flex items-center gap-2"
+                      >
+                        {companyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        Lưu Cấu hình Công ty
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}

@@ -330,7 +330,7 @@ export default function LeavesPage() {
               <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Số ngày</TableHead>
               <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Lý do</TableHead>
               <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Trạng thái</TableHead>
-              <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Thao tác</TableHead>
+              <TableHead className="h-14 px-6 text-center text-xs font-semibold tracking-wider text-slate-500 uppercase">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -396,42 +396,40 @@ export default function LeavesPage() {
                     )}
                   </TableCell>
                   <TableCell className="px-6 py-4">
-                    <Badge className={`${cfg.cls} flex items-center gap-1.5 w-fit`}>
-                      <div className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                      {cfg.label}
-                    </Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge className={`${cfg.cls} flex items-center gap-1.5 w-fit`}>
+                        <div className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                        {cfg.label}
+                      </Badge>
+                      {leave.status !== 'PENDING' && leave.approvedAt && (
+                        <span className="text-[10px] text-slate-400 font-medium pl-1">
+                          {new Date(leave.approvedAt).toLocaleDateString('vi-VN')}
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="flex items-center gap-2">
+                  <TableCell className="px-6 py-4 text-center align-middle">
+                    <div className="flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       {leave.status === 'PENDING' && (
                         <>
                           <button
                             onClick={() => setApproveLeave({ leave, action: 'approve' })}
-                            className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-emerald-50 hover:text-emerald-600 hover:ring-emerald-200 hover:shadow-md hover:shadow-emerald-100"
+                            title="Duyệt"
                           >
-                            <CheckCircle2 className="h-3.5 w-3.5" />Duyệt
+                            <CheckCircle2 className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => setApproveLeave({ leave, action: 'reject' })}
-                            className="flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors"
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-rose-50 hover:text-rose-600 hover:ring-rose-200 hover:shadow-md hover:shadow-rose-100"
+                            title="Từ chối"
                           >
-                            <XCircle className="h-3.5 w-3.5" />Từ chối
+                            <XCircle className="h-3.5 w-3.5" />
                           </button>
                         </>
                       )}
-                      {leave.status === 'PENDING' && (
-                        <button
-                          onClick={() => cancelMutation.mutate(leave.id)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-                          title="Hủy yêu cầu"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      )}
                       {leave.status !== 'PENDING' && (
-                        <span className="text-xs text-slate-400">
-                          {leave.approvedAt ? new Date(leave.approvedAt).toLocaleDateString('vi-VN') : '—'}
-                        </span>
+                        <span className="text-xs text-emerald-600 font-medium mr-2">✓ Đã xử lý</span>
                       )}
                     </div>
                   </TableCell>

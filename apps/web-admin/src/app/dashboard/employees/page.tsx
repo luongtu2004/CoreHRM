@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Plus, Search, Edit, Trash2, Building2, Briefcase, Calendar, Loader2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Building2, Briefcase, Calendar, Loader2, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -83,6 +84,29 @@ export default function EmployeesPage() {
   };
   const openDelete = (item: any) => { setSelectedItem(item); setIsDeleteOpen(true); };
 
+  const exportToExcel = () => {
+    if (!employees || employees.length === 0) {
+      toast.error('Không có dữ liệu để xuất');
+      return;
+    }
+    
+    const dataToExport = employees.map((emp: any) => ({
+      'Mã NV': emp.employeeCode,
+      'Họ tên': emp.user?.name || '',
+      'Email': emp.user?.email || '',
+      'Chức vụ': emp.position || '',
+      'Phòng ban': emp.department?.name || '',
+      'Ngày bắt đầu': emp.startDate ? new Date(emp.startDate).toLocaleDateString('vi-VN') : '',
+      'Mức lương': emp.salary ? emp.salary.toLocaleString('vi-VN') + ' VND' : '',
+      'Trạng thái': emp.status === 'ACTIVE' ? 'Đang làm việc' : 'Đã nghỉ việc',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'NhanVien');
+    XLSX.writeFile(workbook, `DanhSachNhanVien_${new Date().getTime()}.xlsx`);
+  };
+
   const filteredData = employees?.filter((item: any) => {
     const matchesSearch = item.user?.name?.toLowerCase().includes(search.toLowerCase()) || item.employeeCode?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === '' || item.status === statusFilter;
@@ -106,9 +130,14 @@ export default function EmployeesPage() {
           <h1 className="text-2xl font-bold">Quản lý nhân sự</h1>
           <p className="text-gray-500">Quản lý danh sách nhân viên và thông tin vị trí công tác.</p>
         </div>
-        <Button className="flex items-center space-x-2 rounded-full px-5 shadow-sm hover:shadow-md transition-all" onClick={() => setIsAddOpen(true)}>
-          <Plus className="h-4 w-4" /><span>Thêm nhân viên</span>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="flex items-center space-x-2 rounded-full px-5 hover:bg-slate-50 transition-all" onClick={exportToExcel}>
+            <Download className="h-4 w-4" /><span>Xuất Excel</span>
+          </Button>
+          <Button className="flex items-center space-x-2 rounded-full px-5 shadow-sm hover:shadow-md transition-all" onClick={() => setIsAddOpen(true)}>
+            <Plus className="h-4 w-4" /><span>Thêm nhân viên</span>
+          </Button>
+        </div>
       </div>
 
       <FormDrawer open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Thêm nhân viên mới" subtitle="Điền thông tin nhân viên" accentColor="rose">
@@ -250,9 +279,9 @@ export default function EmployeesPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="px-6 py-4 text-right align-middle">
-                  <div className="flex items-center justify-end gap-2 opacity-0 transition-all duration-300 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 focus-within:opacity-100 sm:opacity-100 md:opacity-0 md:translate-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(emp)} className="h-10 w-10 rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-600 hover:shadow-md transition-all"><Edit className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => openDelete(emp)} className="h-10 w-10 rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:shadow-md transition-all"><Trash2 className="h-5 w-5" /></Button>
+                  <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <button onClick={() => openEdit(emp)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-amber-50 hover:text-amber-600 hover:ring-amber-200 hover:shadow-md hover:shadow-amber-100"><Edit className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => openDelete(emp)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-rose-50 hover:text-rose-600 hover:ring-rose-200 hover:shadow-md hover:shadow-rose-100"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </TableCell>
               </TableRow>

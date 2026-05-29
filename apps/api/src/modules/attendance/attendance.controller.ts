@@ -8,11 +8,14 @@ import fs from 'fs';
 const prisma = new PrismaClient();
 
 // Helper: Lấy URL public của ảnh selfie
-const getPhotoUrl = (req: Request, filename: string | undefined) => {
-  if (!filename) return null;
+const getPhotoUrl = (req: Request, file: any) => {
+  if (!file) return null;
+  if (file.path && file.path.startsWith('http')) {
+    return file.path; // URL từ Cloudinary
+  }
   const protocol = req.protocol;
   const host = req.get('host');
-  return `${protocol}://${host}/uploads/attendance/${filename}`;
+  return `${protocol}://${host}/uploads/attendance/${file.filename}`;
 };
 
 // ─── CHECK IN ─────────────────────────────────────────────────────────────────
@@ -32,7 +35,7 @@ export const checkIn = async (req: Request, res: Response) => {
 
     if (existing) {
       // Xóa ảnh vừa upload nếu có (tránh rác)
-      if (photoFile) fs.unlink(photoFile.path, () => {});
+      if (photoFile && !photoFile.path.startsWith('http')) fs.unlink(photoFile.path, () => {});
       return sendError(res, 400, 'Bạn đã chấm công vào hôm nay rồi!');
     }
 
@@ -53,18 +56,22 @@ export const checkIn = async (req: Request, res: Response) => {
           officeSetting.latitude, officeSetting.longitude
         );
         if (distance > officeSetting.radius) {
-          if (photoFile) fs.unlink(photoFile.path, () => {});
-          return sendError(
-            res, 400,
-            `Bạn đang cách văn phòng ${Math.round(distance)}m. Vui lòng đến trong phạm vi ${officeSetting.radius}m để chấm công!`
-          );
+          if (!note || note.trim() === '') {
+            if (photoFile && !photoFile.path.startsWith('http')) fs.unlink(photoFile.path, () => {});
+            return sendError(
+              res, 400,
+              `Bạn đang cách VP ${Math.round(distance)}m. Bắt buộc nhập GHI CHÚ lý do để HR duyệt!`
+            );
+          }
+          status = 'PENDING';
+        } else {
+          // Kiểm tra đi muộn nếu ở trong văn phòng
+          const now = new Date();
+          const [endH, endM] = officeSetting.checkInEnd.split(':').map(Number);
+          const lateThreshold = new Date();
+          lateThreshold.setHours(endH, endM, 0, 0);
+          if (now > lateThreshold) status = 'LATE';
         }
-        // Kiểm tra đi muộn
-        const now = new Date();
-        const [endH, endM] = officeSetting.checkInEnd.split(':').map(Number);
-        const lateThreshold = new Date();
-        lateThreshold.setHours(endH, endM, 0, 0);
-        if (now > lateThreshold) status = 'LATE';
       }
 
       // Fallback: luôn lưu vị trí (dùng geocoded name hoặc tọa độ) dù có hay không có OfficeSettings
@@ -72,7 +79,7 @@ export const checkIn = async (req: Request, res: Response) => {
     }
 
     // 3. Tạo bản ghi chấm công
-    const photoUrl = photoFile ? getPhotoUrl(req, photoFile.filename) : null;
+    const photoUrl = photoFile ? getPhotoUrl(req, photoFile) : null;
 
     const attendance = await prisma.attendance.create({
       data: {
@@ -96,7 +103,7 @@ export const checkIn = async (req: Request, res: Response) => {
 export const checkOut = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const { lat, lng, location } = req.body;
+    const { lat, lng, location, note } = req.body;
     const photoFile = (req as any).file;
 
     const today = new Date();
@@ -107,11 +114,11 @@ export const checkOut = async (req: Request, res: Response) => {
     });
 
     if (!attendance) {
-      if (photoFile) fs.unlink(photoFile.path, () => {});
+      if (photoFile && !photoFile.path.startsWith('http')) fs.unlink(photoFile.path, () => {});
       return sendError(res, 400, 'Không tìm thấy lượt chấm công vào nào hôm nay!');
     }
 
-    const photoUrl = photoFile ? getPhotoUrl(req, photoFile.filename) : null;
+    const photoUrl = photoFile ? getPhotoUrl(req, photoFile) : null;
     // Ưu tiên dùng tên địa điểm từ reverse geocoding (nếu có)
     let locationOut: string | null = location || null;
     let newStatus = attendance.status;
@@ -120,15 +127,32 @@ export const checkOut = async (req: Request, res: Response) => {
       // Nếu chưa có tên địa điểm từ geocoding, dùng tọa độ thô
       if (!locationOut) locationOut = `${parseFloat(lat).toFixed(6)},${parseFloat(lng).toFixed(6)}`;
 
-      // Kiểm tra về sớm
+      // Kiểm tra khoảng cách GPS
       const officeSett = await prisma.officeSettings.findFirst();
       if (officeSett) {
-        const now = new Date();
-        const [endH, endM] = officeSett.workEndTime.split(':').map(Number);
-        const workEndThreshold = new Date();
-        workEndThreshold.setHours(endH, endM, 0, 0);
-        if (now < workEndThreshold && attendance.status !== 'LATE') {
-          newStatus = 'EARLY_LEAVE';
+        const distance = haversineDistance(
+          parseFloat(lat), parseFloat(lng),
+          officeSett.latitude, officeSett.longitude
+        );
+
+        if (distance > officeSett.radius) {
+          if (!note || note.trim() === '') {
+            if (photoFile && !photoFile.path.startsWith('http')) fs.unlink(photoFile.path, () => {});
+            return sendError(
+              res, 400,
+              `Bạn đang cách VP ${Math.round(distance)}m. Bắt buộc nhập GHI CHÚ lý do để HR duyệt!`
+            );
+          }
+          newStatus = 'PENDING';
+        } else {
+          // Kiểm tra về sớm nếu đang ở trong văn phòng
+          const now = new Date();
+          const [endH, endM] = officeSett.workEndTime.split(':').map(Number);
+          const workEndThreshold = new Date();
+          workEndThreshold.setHours(endH, endM, 0, 0);
+          if (now < workEndThreshold && attendance.status !== 'LATE' && attendance.status !== 'PENDING') {
+            newStatus = 'EARLY_LEAVE';
+          }
         }
       }
     }
@@ -142,6 +166,7 @@ export const checkOut = async (req: Request, res: Response) => {
         checkOutLng: lng !== undefined ? parseFloat(lng) : null,
         photoOut: photoUrl,
         status: newStatus,
+        note: note ? (attendance.note ? `${attendance.note} | Checkout: ${note}` : `Checkout: ${note}`) : attendance.note,
       },
     });
 
@@ -169,7 +194,10 @@ export const getMyAttendance = async (req: Request, res: Response) => {
 // ─── GET ALL ATTENDANCE (ADMIN) ───────────────────────────────────────────────
 export const getAllAttendance = async (req: Request, res: Response) => {
   try {
-    const { date, userId: filterUserId } = req.query;
+    const { date, userId: filterUserId, page = '1', limit = '20' } = req.query;
+    
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
 
     const where: any = {};
     if (filterUserId) where.userId = filterUserId as string;
@@ -181,21 +209,35 @@ export const getAllAttendance = async (req: Request, res: Response) => {
       where.createdAt = { gte: d, lte: dEnd };
     }
 
-    const attendances = await prisma.attendance.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            avatar: true,
-            employee: { select: { employeeCode: true, position: true } },
+    const [total, attendances] = await Promise.all([
+      prisma.attendance.count({ where }),
+      prisma.attendance.findMany({
+        where,
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              avatar: true,
+              employee: { select: { employeeCode: true, position: true } },
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
+      })
+    ]);
+
+    sendSuccess(res, {
+      data: attendances,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
     });
-    sendSuccess(res, attendances);
   } catch (error: any) {
     sendError(res, 500, 'Lỗi máy chủ', error.message);
   }

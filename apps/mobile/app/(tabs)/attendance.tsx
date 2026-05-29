@@ -16,6 +16,7 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
   LATE:        { label: 'Đi muộn',   color: '#d97706', bg: '#fef3c7' },
   EARLY_LEAVE: { label: 'Về sớm',    color: '#ea580c', bg: '#fff7ed' },
   ABSENT:      { label: 'Vắng mặt', color: '#ef4444', bg: '#fef2f2' },
+  PENDING:     { label: 'Chờ duyệt', color: '#3b82f6', bg: '#eff6ff' },
 };
 
 type Mode = 'check-in' | 'check-out';
@@ -135,6 +136,12 @@ export default function AttendanceScreen() {
       // 3. Lấy GPS với timeout 10s
       setUploadStep('📍 Đang lấy vị trí GPS...');
       const loc = await getGPSWithTimeout(10000);
+      
+      // Chống Fake GPS (Mock Location)
+      if (loc && loc.mocked) {
+        throw new Error('Phát hiện vị trí giả mạo (Fake GPS). Vui lòng tắt ứng dụng giả lập vị trí và thử lại!');
+      }
+
       const latitude = loc?.coords?.latitude ?? null;
       const longitude = loc?.coords?.longitude ?? null;
 

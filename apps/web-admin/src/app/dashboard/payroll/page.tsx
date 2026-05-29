@@ -245,7 +245,7 @@ export default function PayrollPage() {
               <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Lương thực nhận</TableHead>
               <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Công</TableHead>
               <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Trạng thái</TableHead>
-              <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Thao tác</TableHead>
+              <TableHead className="h-14 px-6 text-right text-xs font-semibold tracking-wider text-slate-500 uppercase">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -313,26 +313,28 @@ export default function PayrollPage() {
                       {cfg.label}
                     </Badge>
                   </TableCell>
-                  <TableCell className="px-6 py-4">
-                    <div className="flex items-center gap-2">
+                  <TableCell className="px-6 py-4 text-right align-middle">
+                    <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       {p.status === 'DRAFT' && (
                         <button
                           onClick={() => confirmMutation.mutate(p.id)}
-                          className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-blue-50 hover:text-blue-600 hover:ring-blue-200 hover:shadow-md hover:shadow-blue-100"
+                          title="Xác nhận"
                         >
-                          Xác nhận
+                          <CheckCircle2 className="h-3.5 w-3.5" />
                         </button>
                       )}
                       {p.status === 'CONFIRMED' && (
                         <button
                           onClick={() => paidMutation.mutate(p.id)}
-                          className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-emerald-50 hover:text-emerald-600 hover:ring-emerald-200 hover:shadow-md hover:shadow-emerald-100"
+                          title="Thanh toán"
                         >
-                          Thanh toán
+                          <CreditCard className="h-3.5 w-3.5" />
                         </button>
                       )}
                       {p.status === 'PAID' && (
-                        <span className="text-xs text-emerald-600 font-medium">✓ Đã xong</span>
+                        <span className="text-xs text-emerald-600 font-medium mr-2">✓ Đã xong</span>
                       )}
                     </div>
                   </TableCell>

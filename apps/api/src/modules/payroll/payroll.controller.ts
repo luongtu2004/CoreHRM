@@ -56,7 +56,7 @@ export const getMyPayslips = async (req: Request, res: Response) => {
 export const getPayslipById = async (req: Request, res: Response) => {
   try {
     const payslip = await prisma.payslip.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       include: { user: { select: { name: true, email: true, avatar: true } } }
     });
     if (!payslip) return sendError(res, 404, 'Không tìm thấy phiếu lương');
@@ -165,7 +165,7 @@ export const generatePayslips = async (req: Request, res: Response) => {
 export const updatePayslip = async (req: Request, res: Response) => {
   try {
     const { allowance, deduction, note } = req.body;
-    const payslip = await prisma.payslip.findUnique({ where: { id: req.params.id } });
+    const payslip = await prisma.payslip.findUnique({ where: { id: req.params.id as string } });
     if (!payslip) return sendError(res, 404, 'Không tìm thấy phiếu lương');
 
     const newAllowance = allowance ?? payslip.allowance;
@@ -173,7 +173,7 @@ export const updatePayslip = async (req: Request, res: Response) => {
     const netSalary = Math.max(0, payslip.baseSalary + newAllowance - newDeduction);
 
     const updated = await prisma.payslip.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { allowance: newAllowance, deduction: newDeduction, netSalary, note }
     });
     sendSuccess(res, updated, 'Đã cập nhật phiếu lương');
@@ -185,7 +185,7 @@ export const updatePayslip = async (req: Request, res: Response) => {
 export const confirmPayslip = async (req: Request, res: Response) => {
   try {
     const payslip = await prisma.payslip.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { status: 'CONFIRMED' },
       include: { user: { select: { id: true, name: true } } }
     });
@@ -209,7 +209,7 @@ export const confirmPayslip = async (req: Request, res: Response) => {
 export const markPayslipPaid = async (req: Request, res: Response) => {
   try {
     const payslip = await prisma.payslip.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { status: 'PAID' }
     });
     sendSuccess(res, payslip, 'Đã đánh dấu đã thanh toán');
@@ -220,7 +220,7 @@ export const markPayslipPaid = async (req: Request, res: Response) => {
 
 export const deletePayslip = async (req: Request, res: Response) => {
   try {
-    await prisma.payslip.delete({ where: { id: req.params.id } });
+    await prisma.payslip.delete({ where: { id: req.params.id as string } });
     sendSuccess(res, null, 'Đã xóa phiếu lương');
   } catch (error: any) {
     sendError(res, 500, 'Server error', error.message);

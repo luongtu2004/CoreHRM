@@ -5,7 +5,9 @@ import {
 } from 'react-native';
 import { useAuth } from '../src/lib/auth-context';
 import api from '../src/lib/api';
-import { Eye, EyeOff, Mail, Lock, ShieldCheck, Building2 } from 'lucide-react-native';
+import { Eye, EyeOff, Mail, Lock, ShieldCheck, Building2, Fingerprint } from 'lucide-react-native';
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -14,6 +16,43 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const auth = useAuth();
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+
+  React.useEffect(() => {
+    (async () => {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      const savedEmail = await SecureStore.getItemAsync('saved_email');
+      if (compatible && enrolled && savedEmail) {
+        setIsBiometricSupported(true);
+      }
+    })();
+  }, []);
+
+  const handleBiometricAuth = async () => {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Xác thực vân tay / khuôn mặt để đăng nhập',
+        fallbackLabel: 'Sử dụng mật khẩu'
+      });
+      if (result.success) {
+        setLoading(true);
+        const savedEmail = await SecureStore.getItemAsync('saved_email');
+        const savedPassword = await SecureStore.getItemAsync('saved_password');
+        if (savedEmail && savedPassword) {
+          const response = await api.post('/auth/login', { email: savedEmail, password: savedPassword });
+          const { token } = response.data.data;
+          await auth.login(token);
+        } else {
+          setError('Không tìm thấy thông tin đăng nhập đã lưu');
+        }
+      }
+    } catch (err: any) {
+      setError('Lỗi xác thực sinh trắc học');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     setError('');
@@ -24,6 +63,11 @@ export default function LoginScreen() {
     try {
       const response = await api.post('/auth/login', { email: email.trim(), password });
       const { token } = response.data.data;
+      
+      // Save credentials for future biometric login
+      await SecureStore.setItemAsync('saved_email', email.trim());
+      await SecureStore.setItemAsync('saved_password', password);
+      
       await auth.login(token);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Email hoặc mật khẩu không chính xác');
@@ -108,6 +152,18 @@ export default function LoginScreen() {
               <Text style={styles.loginBtnText}>Đăng nhập</Text>
             )}
           </TouchableOpacity>
+
+          {/* Biometric Button */}
+          {isBiometricSupported && (
+            <TouchableOpacity
+              style={styles.biometricBtn}
+              onPress={handleBiometricAuth}
+              disabled={loading}
+            >
+              <Fingerprint size={20} color="#2563eb" />
+              <Text style={styles.biometricBtnText}>Đăng nhập bằng Sinh trắc học</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Demo accounts */}
           <View style={styles.demoSection}>
@@ -201,6 +257,14 @@ const styles = StyleSheet.create({
   },
   loginBtnDisabled: { opacity: 0.7 },
   loginBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', letterSpacing: 0.5 },
+
+  // Biometric
+  biometricBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#eff6ff', borderRadius: 14, height: 52,
+    marginTop: 12, borderWidth: 1, borderColor: '#bfdbfe',
+  },
+  biometricBtnText: { color: '#2563eb', fontSize: 15, fontWeight: '600' },
 
   // Demo buttons
   demoSection: { marginTop: 16 },

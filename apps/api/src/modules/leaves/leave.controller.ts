@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../../utils/response';
+import { getIO } from '../../utils/socket';
 
 const prisma = new PrismaClient();
 
@@ -30,7 +31,7 @@ export const createLeaveType = async (req: Request, res: Response) => {
 export const updateLeaveType = async (req: Request, res: Response) => {
   try {
     const type = await prisma.leaveType.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: req.body
     });
     sendSuccess(res, type, 'Đã cập nhật loại nghỉ phép');
@@ -41,7 +42,7 @@ export const updateLeaveType = async (req: Request, res: Response) => {
 
 export const deleteLeaveType = async (req: Request, res: Response) => {
   try {
-    await prisma.leaveType.delete({ where: { id: req.params.id } });
+    await prisma.leaveType.delete({ where: { id: req.params.id as string } });
     sendSuccess(res, null, 'Đã xóa loại nghỉ phép');
   } catch (error: any) {
     sendError(res, 500, 'Server error', error.message);
@@ -138,6 +139,13 @@ export const createLeaveRequest = async (req: Request, res: Response) => {
       });
     }
 
+    try {
+      getIO().emit('leave_updated', { action: 'create', data: request });
+      getIO().emit('new_notification', { type: 'LEAVE', message: 'Yêu cầu nghỉ phép mới' });
+    } catch (e) {
+      console.log('Socket emit error:', e);
+    }
+
     sendSuccess(res, request, 'Đã gửi yêu cầu nghỉ phép');
   } catch (error: any) {
     sendError(res, 500, 'Server error', error.message);
@@ -150,7 +158,7 @@ export const approveLeaveRequest = async (req: Request, res: Response) => {
     const { note } = req.body;
 
     const leave = await prisma.leaveRequest.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { status: 'APPROVED', approvedBy: approver.id, approvedAt: new Date(), note },
       include: { user: true, leaveType: true }
     });
@@ -166,6 +174,11 @@ export const approveLeaveRequest = async (req: Request, res: Response) => {
       }
     });
 
+    try {
+      getIO().emit('leave_updated', { action: 'approve', data: leave });
+      getIO().emit('new_notification', { type: 'LEAVE', userId: leave.userId, message: 'Yêu cầu nghỉ phép được duyệt' });
+    } catch (e) {}
+
     sendSuccess(res, leave, 'Đã phê duyệt yêu cầu nghỉ phép');
   } catch (error: any) {
     sendError(res, 500, 'Server error', error.message);
@@ -178,7 +191,7 @@ export const rejectLeaveRequest = async (req: Request, res: Response) => {
     const { note } = req.body;
 
     const leave = await prisma.leaveRequest.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { status: 'REJECTED', approvedBy: approver.id, approvedAt: new Date(), note },
       include: { user: true, leaveType: true }
     });
@@ -193,6 +206,11 @@ export const rejectLeaveRequest = async (req: Request, res: Response) => {
       }
     });
 
+    try {
+      getIO().emit('leave_updated', { action: 'reject', data: leave });
+      getIO().emit('new_notification', { type: 'LEAVE', userId: leave.userId, message: 'Yêu cầu nghỉ phép bị từ chối' });
+    } catch (e) {}
+
     sendSuccess(res, leave, 'Đã từ chối yêu cầu nghỉ phép');
   } catch (error: any) {
     sendError(res, 500, 'Server error', error.message);
@@ -202,15 +220,20 @@ export const rejectLeaveRequest = async (req: Request, res: Response) => {
 export const cancelLeaveRequest = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const leave = await prisma.leaveRequest.findUnique({ where: { id: req.params.id } });
+    const leave = await prisma.leaveRequest.findUnique({ where: { id: req.params.id as string } });
     if (!leave) return sendError(res, 404, 'Không tìm thấy yêu cầu');
     if (leave.userId !== userId) return sendError(res, 403, 'Bạn không có quyền hủy yêu cầu này');
     if (leave.status !== 'PENDING') return sendError(res, 400, 'Chỉ có thể hủy yêu cầu đang chờ duyệt');
 
     const updated = await prisma.leaveRequest.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: { status: 'CANCELLED' }
     });
+
+    try {
+      getIO().emit('leave_updated', { action: 'cancel', data: updated });
+    } catch (e) {}
+
     sendSuccess(res, updated, 'Đã hủy yêu cầu nghỉ phép');
   } catch (error: any) {
     sendError(res, 500, 'Server error', error.message);

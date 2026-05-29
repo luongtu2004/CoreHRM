@@ -6,8 +6,9 @@ import api from '@/lib/api';
 import {
   Search, Clock, MapPin, Calendar, User, LogIn, LogOut,
   CheckCircle2, AlertCircle, TrendingUp, Users, Timer, Camera, X, Eye,
-  PenLine, Trash2, Plus, UserX
+  PenLine, Trash2, Plus, UserX, Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import Image from 'next/image';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -21,6 +22,8 @@ export default function AttendancePage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [detailRecord, setDetailRecord] = useState<any>(null);
   const [correctModal, setCorrectModal] = useState(false);
@@ -29,10 +32,16 @@ export default function AttendancePage() {
     checkIn: '08:00', checkOut: '17:30', status: 'PRESENT', note: ''
   });
 
-  const { data: attendanceData, isLoading } = useQuery({
-    queryKey: ['attendance'],
+  const { data: attendanceRes, isLoading } = useQuery({
+    queryKey: ['attendance', page, dateFilter, statusFilter],
     queryFn: async () => {
-      const response = await api.get('/attendance');
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+      if (dateFilter) params.append('date', dateFilter);
+      // Not passing statusFilter to API because it wasn't there before, we can filter client-side for now, but API doesn't support statusFilter natively yet.
+      
+      const response = await api.get(`/attendance?${params.toString()}`);
       return response.data;
     },
     refetchInterval: 5000,
@@ -70,9 +79,30 @@ export default function AttendancePage() {
     if (confirm(`Xóa bản ghi chấm công của "${name}"?`)) deleteMutation.mutate(id);
   };
 
-  const records = Array.isArray(attendanceData) ? attendanceData : [];
+  const handleApprove = (record: any, isApproved: boolean) => {
+    if (!confirm(isApproved ? `Duyệt chấm công cho ${record.user?.name}?` : `Từ chối chấm công của ${record.user?.name}?`)) return;
 
-  // Stats
+    const dateStr = new Date(record.createdAt).toLocaleDateString('en-CA'); // YYYY-MM-DD local
+    const formatHHmm = (dateString: string | null) => {
+      if (!dateString) return null;
+      const d = new Date(dateString);
+      return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    };
+
+    correctMutation.mutate({
+      userId: record.userId,
+      date: dateStr,
+      checkIn: formatHHmm(record.createdAt),
+      checkOut: formatHHmm(record.checkOut),
+      status: isApproved ? 'PRESENT' : 'ABSENT',
+      note: record.note ? `${record.note} [${isApproved ? 'Đã duyệt' : 'Từ chối'}]` : `[${isApproved ? 'Đã duyệt' : 'Từ chối'}]`
+    });
+  };
+
+  const records = Array.isArray(attendanceRes) ? attendanceRes : (attendanceRes?.data || []);
+  const pagination = attendanceRes?.pagination;
+
+  // Stats (Note: These stats now represent the current fetched page/filters)
   const today = new Date().toDateString();
   const todayRecords = records.filter((r: any) => new Date(r.createdAt).toDateString() === today);
   const checkedInToday = todayRecords.length;
@@ -105,6 +135,7 @@ export default function AttendancePage() {
       case 'LATE': return { cls: 'bg-amber-500/10 text-amber-600 border-amber-200/50', dot: 'bg-amber-500', label: 'Đi muộn' };
       case 'EARLY_LEAVE': return { cls: 'bg-orange-500/10 text-orange-600 border-orange-200/50', dot: 'bg-orange-500', label: 'Về sớm' };
       case 'ABSENT': return { cls: 'bg-rose-500/10 text-rose-600 border-rose-200/50', dot: 'bg-rose-500', label: 'Vắng mặt' };
+      case 'PENDING': return { cls: 'bg-blue-500/10 text-blue-600 border-blue-200/50', dot: 'bg-blue-500', label: 'Chờ duyệt' };
       default: return { cls: 'bg-slate-500/10 text-slate-600 border-slate-200/50', dot: 'bg-slate-400', label: status };
     }
   };
@@ -112,9 +143,31 @@ export default function AttendancePage() {
   const filteredRecords = records.filter((r: any) => {
     const matchesSearch = r.user?.name?.toLowerCase().includes(search.toLowerCase()) || r.user?.email?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === '' || r.status === statusFilter;
-    const matchesDate = dateFilter === '' || new Date(r.createdAt).toISOString().split('T')[0] === dateFilter;
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus;
   });
+
+  const exportToExcel = () => {
+    if (filteredRecords.length === 0) {
+      toast.error('Không có dữ liệu để xuất');
+      return;
+    }
+
+    const dataToExport = filteredRecords.map((r: any) => ({
+      'Ngày': formatDate(r.createdAt),
+      'Họ tên': r.user?.name || '',
+      'Email': r.user?.email || '',
+      'Giờ vào': formatTime(r.createdAt),
+      'Giờ ra': r.checkOut ? formatTime(r.checkOut) : 'Chưa chấm ra',
+      'Tổng giờ': calcWorkHours(r.createdAt, r.checkOut),
+      'Trạng thái': getStatusBadge(r.status).label,
+      'Ghi chú': r.note || ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'ChamCong');
+    XLSX.writeFile(workbook, `BaoCaoChamCong_${new Date().getTime()}.xlsx`);
+  };
 
   return (
     <div className="space-y-6">
@@ -262,6 +315,9 @@ export default function AttendancePage() {
           <p className="text-gray-500">Theo dõi giờ vào/ra của toàn bộ nhân viên trong công ty.</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="outline" className="flex items-center space-x-2 rounded-full px-5 hover:bg-slate-50 transition-all" onClick={exportToExcel}>
+            <Download className="h-4 w-4" /><span>Xuất Excel</span>
+          </Button>
           <Button
             onClick={() => setCorrectModal(true)}
             className="flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 px-5 shadow-sm shadow-blue-500/30 hover:shadow-md transition-all"
@@ -418,6 +474,7 @@ export default function AttendancePage() {
                   <option value="LATE">Đi muộn</option>
                   <option value="EARLY_LEAVE">Về sớm</option>
                   <option value="ABSENT">Vắng mặt</option>
+                  <option value="PENDING">Chờ duyệt</option>
                 </select>
               </div>
               <div>
@@ -472,12 +529,13 @@ export default function AttendancePage() {
             <option value="LATE">Đi muộn</option>
             <option value="EARLY_LEAVE">Về sớm</option>
             <option value="ABSENT">Vắng mặt</option>
+            <option value="PENDING">Chờ duyệt</option>
           </select>
           {(search || statusFilter || dateFilter) && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setSearch(''); setStatusFilter(''); setDateFilter(''); }}
+              onClick={() => { setSearch(''); setStatusFilter(''); setDateFilter(''); setPage(1); }}
               className="rounded-xl text-slate-500 hover:text-slate-800"
             >
               Xóa lọc
@@ -499,7 +557,7 @@ export default function AttendancePage() {
               <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Trạng thái</TableHead>
               <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Ảnh xác thực</TableHead>
               <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase">Vị trí GPS</TableHead>
-              <TableHead className="h-14 px-6 text-xs font-semibold tracking-wider text-slate-500 uppercase text-right">Chi tiết</TableHead>
+              <TableHead className="h-14 px-6 text-center text-xs font-semibold tracking-wider text-slate-500 uppercase">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -639,21 +697,40 @@ export default function AttendancePage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                  <TableCell className="px-6 py-4 text-center align-middle">
+                    <div className="flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      {record.status === 'PENDING' && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(record, true)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-emerald-50 hover:text-emerald-600 hover:ring-emerald-200 hover:shadow-md hover:shadow-emerald-100"
+                            title="Duyệt"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleApprove(record, false)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-rose-50 hover:text-rose-600 hover:ring-rose-200 hover:shadow-md hover:shadow-rose-100"
+                            title="Từ chối"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                          <div className="w-px h-4 bg-slate-200 mx-0.5"></div>
+                        </>
+                      )}
                       <button
                         onClick={() => setDetailRecord(record)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-blue-50 hover:text-blue-600 hover:ring-blue-200 hover:shadow-md hover:shadow-blue-100"
                         title="Xem chi tiết"
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => handleDelete(record.id, record.user?.name || 'N/A')}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-rose-50 hover:text-rose-600 hover:ring-rose-200 hover:shadow-md hover:shadow-rose-100"
                         title="Xóa bản ghi"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </TableCell>
@@ -677,6 +754,43 @@ export default function AttendancePage() {
             )}
           </TableBody>
         </Table>
+
+        {pagination && pagination.totalPages > 0 && (
+          <div className="flex items-center justify-between border-t border-slate-100 bg-white/50 px-6 py-4">
+            <p className="text-sm text-slate-500">
+              Hiển thị <span className="font-semibold text-slate-800">{(page - 1) * limit + 1}</span>–<span className="font-semibold text-slate-800">{Math.min(page * limit, pagination.total)}</span> trong <span className="font-semibold text-slate-800">{pagination.total}</span> bản ghi
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ‹
+              </button>
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-medium transition-all ${
+                    page === p
+                      ? 'border-blue-500 bg-blue-500 text-white shadow-sm shadow-blue-500/30'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+                disabled={page === pagination.totalPages}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

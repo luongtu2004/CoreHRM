@@ -291,9 +291,9 @@ export default function TasksPage() {
                   </div>
                 </TableCell>
                 <TableCell className="px-6 py-4 text-right align-middle">
-                  <div className="flex items-center justify-end gap-2 opacity-0 transition-all duration-300 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 focus-within:opacity-100 sm:opacity-100 md:opacity-0 md:translate-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(task)} className="h-10 w-10 rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-600 hover:shadow-md transition-all"><Edit className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => openDelete(task)} className="h-10 w-10 rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:shadow-md transition-all"><Trash2 className="h-5 w-5" /></Button>
+                  <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <button onClick={() => openEdit(task)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-amber-50 hover:text-amber-600 hover:ring-amber-200 hover:shadow-md hover:shadow-amber-100"><Edit className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => openDelete(task)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-rose-50 hover:text-rose-600 hover:ring-rose-200 hover:shadow-md hover:shadow-rose-100"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </TableCell>
               </TableRow>
